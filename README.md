@@ -14,7 +14,7 @@ In our meetings with potential customers, a question on bench strength is freque
 <h3> Database Set-up </h3>
 <li>Ensure MySQL is installed </li>
 <li>Create database 'fract_db' </li>
-<li>Import seed DB schema</li>
+<li>Import DB schema</li>
 </div>
 
 <div>
