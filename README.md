@@ -12,16 +12,20 @@ In our meetings with potential customers, a question on bench strength is freque
 <h2>How to Use?</h2>
 <div>
 <h3> Database Set-up </h3>
+<ul>
 <li>Ensure MySQL is installed </li>
 <li>Create database 'fract_db' </li>
 <li>Import DB schema</li>
+</ul>
 </div>
 
 <div>
 <h3>Server Set-up </h3>
+<ul>
 <li>Ensure Latest Versions of node and npm are installed </li>
 <li>Clone this git repository</li>
 <li>run 'npm install'</li>
 <li> Start Server 'npm start'</li>
+</ul>
 </div>
 </div>
