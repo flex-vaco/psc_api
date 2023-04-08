@@ -18,9 +18,9 @@ const findAll = (req, res) => {
 };
 
 const findById = (req, res) => {
-  const empDetailsId = req.params.id;
-  if (empDetailsId) {
-    const query = `SELECT * FROM ${projectTable} WHERE id = '${empDetailsId}'`;
+  const projectDetailsId = req.params.id;
+  if (projectDetailsId) {
+    const query = `SELECT * FROM ${projectTable} WHERE id = '${projectDetailsId}'`;
     sql.query(query, (err, rows) => {
       if (err) {
         console.log("error: ", err);
