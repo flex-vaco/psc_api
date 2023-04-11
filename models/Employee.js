@@ -60,7 +60,7 @@ const update = (req, res) => {
       console.log("error: ", err);
       res.status(500).send(`Problem while Updating the ${empTable} with ID: ${id}. ${err}`);
     } else {
-      if (succeess.changedRows == 1){
+      if (succeess.affectedRows == 1){
         console.log(`${empTable} UPDATED:` , succeess)
         updatedEmployee.id = parseInt(id);
         res.status(200).send(updatedEmployee);

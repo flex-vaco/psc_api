@@ -1,62 +1,170 @@
 const sql = require("../lib/db.js");
+const usersTable = "users";
+const bcrypt = require("bcrypt");
 
-//Functions to get DB results
-//============================
-const getRaj = ()=>{
-    //dummy function
-    const data = {id:11, name:"V Rajender Vanamala"}
-    return data;
+const findAll = (req, res) => {
+  let query =`SELECT * FROM ${usersTable}`;
+  if (req.query.first_name) {
+    query += ` WHERE first_name LIKE '%${req.query.first_name}%'`;
+  }
+  sql.query(query, (err, rows) => {
+    if (err) {
+      console.log("error: ", err);
+      return res.status(500).send(`There was a problem getting Users. ${err}`);
+    }
+    // console.log("Users: ", rows);
+    return res.status(200).send({users: rows});
+  });
+  //res.render("customers", { customers: rows });
 };
 
-// const getAll = (result) => {
-//     let query = "SELECT * FROM users";
-  
-//     if (title) {
-//       query += ` WHERE title LIKE '%${title}%'`;
-//     }
-  
-//     sql.query(query, (err, res) => {
-//       if (err) {
-//         console.log("error: ", err);
-//         result(null, err);
-//         return;
-//       }
-  
-//       console.log("tutorials: ", res);
-//       result(null, res);
-//     });
-//   };
-// const getData = new Promise((reject, resolve)=> {
-//     let x = 0;
-  
-//   // The producing code (this may take some time)
-//   const data = {id:21, name:"This is RAJ"}
+const findByEmail = (req, res) => {
+  const emailId = req.params.email;
+  if (emailId) {
+    const query = `SELECT * FROM ${usersTable} WHERE email = '${emailId}'`;
+    sql.query(query, (err, rows) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(500).send(`There was a problem finding the User. ${err}`);
+      }
+      // console.log("users: ", rows);
+      return res.status(200).send({user: rows[0]});
+    });
+  } else {
+    return res.status(500).send("Email ID required");
+  }
+};
 
-//     if (x == 0) {
-//       resolve(res.status(200).send(data));
-//     } else {
-//       reject(res.status(500).send("There was a problem finding the user."));
-//     }
-// });
+const userExists = (email) => {
+    // Check if the email is already in use
+    if (!email) {
+        return false;
+     }
+        const query = `SELECT * FROM ${usersTable} WHERE email = '${email}'`;
+        sql.query(query, (err, rows) => {
+            if (err) {
+                console.log("error: ", err);
+                return false;
+            }
+            return rows.length >=1 ? true : false;
+        });
 
-// async function getDBdata() {
-//     try {
-//       const data = await getRaj();
-//       return data;
-//     } catch(error) {
-//       console.log(error.message, error.stack);
-//     }
-//   }
-  
-//   findById(req.params.id, function (err, user)=> {
-//     if (err) return res.status(500).send("There was a problem finding the user.");
-//     if (!user) return res.status(404).send("No user found.");
-//     res.status(200).send(user);
-// });
+};
+
+const create = (req, res) => {
+    const newUser = req.body;
+    if (!newUser.email || !newUser.password) {
+        res.status(500).send("Email ID and passord are neeeded");
+        return;
+    }
+    const chkUsrQuery = `SELECT * FROM ${usersTable} WHERE email = '${newUser.email}'`;
+    sql.query(chkUsrQuery, (err, rows) => {
+        if (err) throw new Error(`Internal Server Error: ${err}`);
+        if (rows.length >=1){
+            console.log(`User Already exists with email ID. ${newUser.email}`)
+            res.status(500).send(`User Already exists with email ID. ${newUser.email}`);
+        } else {
+         // Define salt rounds
+         const saltRounds = 9;
+         // Hash password
+         bcrypt.hash(newUser.password, saltRounds, (err, hash) => {
+             if (err) throw new Error("Internal Server Error");
+             newUser.password = hash;
+             const insertQuery = `INSERT INTO ${usersTable} set ?`;
+             sql.query(insertQuery, [newUser], (err, succeess) => {
+                 if (err) {
+                     console.log("error: ", err);
+                     res.status(500).send(`Problem while Adding the User. ${err}`);
+                 } else {
+                     newUser.id = succeess.insertId;
+                     res.status(200).send(newUser);
+                 }
+             });
+         });
+        }
+    });
+};
+
+const signIn = (req, res) => {
+    try {
+        // Extract email and password from the req.body object
+        const { email, password } = req.body;
+
+        const chkUsrQuery = `SELECT * FROM ${usersTable} WHERE email = '${email}'`;
+        sql.query(chkUsrQuery, (err, rows) => {
+            if (err) throw new Error(`Internal Server Error: ${err}`);
+
+            if (rows.length == 0) {
+                return res.status(401).json({ message: "Invalid Credentials" });
+            } else {
+                const user = rows[0];
+                // Compare passwords
+                bcrypt.compare(password, user.password, (err, result) => {
+                    if (result) {
+                        return res.status(200).json({ message: "User Logged in Successfully" });
+                    }
+                    console.log(err);
+                    return res.status(401).json({ message: "Invalid Credentials" });
+                });
+            }
+        })
+    } catch (error) {
+        res.status(401).send(err.message);
+    }
+}
+
+const update = (req, res) => {
+  const { id } = req.params;
+  if(!id){
+    res.status(500).send('User ID is Required');
+  }
+  const updatedUser = req.body;
+  const updateQuery = `UPDATE ${usersTable} set ? WHERE id = ?`;
+  sql.query(updateQuery,[updatedUser, id], (err, succeess) => {
+    if (err) {
+      console.log("error: ", err);
+      res.status(500).send(`Problem while Updating the ${usersTable} with ID: ${id}. ${err}`);
+    } else {
+      if (succeess.affectedRows == 1){
+        console.log(`${usersTable} UPDATED:` , succeess)
+        updatedUser.id = parseInt(id);
+        res.status(200).send(updatedUser);
+      } else {
+        res.status(404).send(`Record not found with User Details ID: ${id}`);
+      }
+    }
+  });
+};
+
+const erase = (req, res) => {
+  const { id } = req.params;
+  if(!id){
+    res.status(500).send('User ID is Required');
+  }
+  //const updatedUser = req.body;
+  const deleteQuery = `DELETE FROM ${usersTable} WHERE id = ?`;
+  sql.query(deleteQuery,[id], (err, succeess) => {
+    if (err) {
+      console.log("error: ", err);
+      res.status(500).send(`Problem while Deleting the ${usersTable} with ID: ${id}. ${err}`);
+    } else {
+      //console.log("DEL: ", succeess)
+      if (succeess.affectedRows == 1){
+        console.log(`${usersTable} DELETED:` , succeess)
+        //updatedUser.id = parseInt(id);
+        res.status(200).send(`Deleted row from ${usersTable} with ID: ${id}`);
+      } else {
+        res.status(404).send(`Record not found with User Details ID: ${id}`);
+      }
+    }
+  });
+};
+
 module.exports = {
-    getRaj,
-    //getData,
-    //getDBdata,
-   //findById,
-    //getAll
+  findAll,
+  findByEmail,
+  create,
+  update,
+  erase,
+  signIn
 }
