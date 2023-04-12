@@ -1,6 +1,10 @@
+const { token } = require("morgan");
 const sql = require("../lib/db.js");
-const usersTable = "users";
 const bcrypt = require("bcrypt");
+const jwt = require('jsonwebtoken');
+
+
+const usersTable = "users";
 
 const findAll = (req, res) => {
   let query =`SELECT * FROM ${usersTable}`;
@@ -15,7 +19,6 @@ const findAll = (req, res) => {
     // console.log("Users: ", rows);
     return res.status(200).send({users: rows});
   });
-  //res.render("customers", { customers: rows });
 };
 
 const findByEmail = (req, res) => {
@@ -101,7 +104,9 @@ const signIn = (req, res) => {
                 // Compare passwords
                 bcrypt.compare(password, user.password, (err, result) => {
                     if (result) {
-                        return res.status(200).json({ message: "User Logged in Successfully" });
+                      delete user["password"];
+                      const jwToken = jwt.sign({id:user.id},'fract-api-jwt-secrect',{ expiresIn: '1h' });
+                        return res.status(200).json({ message: "Logged in!", token: jwToken, user: user });
                     }
                     console.log(err);
                     return res.status(401).json({ message: "Invalid Credentials" });
