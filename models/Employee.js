@@ -11,7 +11,6 @@ const findAll = (req, res) => {
       console.log("error: ", err);
       return res.status(500).send(`There was a problem getting employees. ${err}`);
     }
-    // console.log("employees: ", rows);
     return res.status(200).send({employees: rows});
   });
   //res.render("customers", { customers: rows });
@@ -32,6 +31,39 @@ const findById = (req, res) => {
   } else {
     return res.status(500).send("Employee ID required");
   }
+};
+
+
+const search = (req, res) => {
+   
+    const empSkill = req.query.skill;
+    const empLocation =  req.query.location ?? null;
+    const empExperience = req.query.exp ?? null;
+    const empRole = req.query.role ??
+    
+    console.log(empExperience);
+    let query = `SELECT * FROM ${empTable} WHERE primary_skills LIKE '%${empSkill}%'`;
+
+    if (empLocation) {
+      query = query + ` AND office_location_city LIKE '${empLocation}%'`;
+    } 
+
+    if (empExperience) {
+      query = query + ` AND total_work_experience_years >= ${empExperience}`;
+    }                                          
+
+    if (empRole) {
+      query = query + ` AND role LIKE '%${empRole}%'`;
+    }   
+    
+    sql.query(query, (err, rows) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(500).send(`There was a problem finding the employee. ${err}`);
+      }
+      console.log("employees: ", rows);
+      return res.status(200).send({employees: rows});
+    });
 };
 
 const create = (req, res) => {
@@ -100,5 +132,6 @@ module.exports = {
   findById,
   create,
   update,
-  erase
+  erase,
+  search
 }
