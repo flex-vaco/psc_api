@@ -9,9 +9,9 @@ router.use(bodyParser.urlencoded({ extended: true }));
 
 router.get("/filter", verifyToken, Employee.search);
 router.get("/", verifyToken, Employee.findAll);
-router.get("/:id", verifyToken, Employee.findById);
+router.get("/:emp_id", verifyToken, Employee.findById);
 router.post("/add", verifyToken, Employee.create);
-router.post("/update/:id", verifyToken, Employee.update);
-router.get("/delete/:id", verifyToken, Employee.erase);
+router.post("/update/:emp_id", verifyToken, Employee.update);
+router.get("/delete/:emp_id", verifyToken, Employee.erase);
 
 module.exports = router;

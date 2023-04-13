@@ -18,9 +18,9 @@ const findAll = (req, res) => {
 };
 
 const findById = (req, res) => {
-  const projectDetailsId = req.params.id;
+  const projectDetailsId = req.params.project_id;
   if (projectDetailsId) {
-    const query = `SELECT * FROM ${projectTable} WHERE id = '${projectDetailsId}'`;
+    const query = `SELECT * FROM ${projectTable} WHERE project_id = '${projectDetailsId}'`;
     sql.query(query, (err, rows) => {
       if (err) {
         console.log("error: ", err);
@@ -42,54 +42,54 @@ const create = (req, res) => {
       console.log("error: ", err);
       res.status(500).send(`Problem while Adding the Project. ${err}`);
     } else {
-      newProject.id = succeess.insertId;
+      newProject.project_id = succeess.insertId;
       res.status(200).send(newProject);
     }
   });
 };
 
 const update = (req, res) => {
-  const { id } = req.params;
-  if(!id){
+  const { project_id } = req.params;
+  if(!project_id){
     res.status(500).send('Project ID is Required');
   }
   const updatedProject = req.body;
-  const updateQuery = `UPDATE ${projectTable} set ? WHERE id = ?`;
-  sql.query(updateQuery,[updatedProject, id], (err, succeess) => {
+  const updateQuery = `UPDATE ${projectTable} set ? WHERE project_id = ?`;
+  sql.query(updateQuery,[updatedProject, project_id], (err, succeess) => {
     if (err) {
       console.log("error: ", err);
-      res.status(500).send(`Problem while Updating the ${projectTable} with ID: ${id}. ${err}`);
+      res.status(500).send(`Problem while Updating the ${projectTable} with ID: ${project_id}. ${err}`);
     } else {
       if (succeess.affectedRows == 1){
         console.log(`${projectTable} UPDATED:` , succeess)
-        updatedProject.id = parseInt(id);
+        updatedProject.project_id = parseInt(project_id);
         res.status(200).send(updatedProject);
       } else {
-        res.status(404).send(`Record not found with Project Details ID: ${id}`);
+        res.status(404).send(`Record not found with Project Details ID: ${project_id}`);
       }
     }
   });
 };
 
 const erase = (req, res) => {
-  const { id } = req.params;
-  if(!id){
+  const { project_id } = req.params;
+  if(!project_id){
     res.status(500).send('Project ID is Required');
   }
   //const updatedProject = req.body;
-  const deleteQuery = `DELETE FROM ${projectTable} WHERE id = ?`;
-  sql.query(deleteQuery,[id], (err, succeess) => {
+  const deleteQuery = `DELETE FROM ${projectTable} WHERE project_id = ?`;
+  sql.query(deleteQuery,[project_id], (err, succeess) => {
     if (err) {
       console.log("error: ", err);
-      res.status(500).send(`Problem while Deleting the ${projectTable} with ID: ${id}. ${err}`);
+      res.status(500).send(`Problem while Deleting the ${projectTable} with ID: ${project_id}. ${err}`);
     } else {
       //console.log("DEL: ", succeess)
       if (succeess.affectedRows == 1){
         console.log(`${projectTable} DELETED:` , succeess)
-        //updatedProject.id = parseInt(id);
-        res.status(200).send(`Deleted row from ${projectTable} with ID: ${id}`);
+        //updatedProject.project_id = parseInt(project_id);
+        res.status(200).send(`Deleted row from ${projectTable} with ID: ${project_id}`);
       } else {
-        res.status(404).send(`Record not found with Project Details ID: ${id}`);
+        res.status(404).send(`Record not found with Project Details ID: ${project_id}`);
       }
     }
   });

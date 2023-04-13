@@ -79,7 +79,7 @@ const create = (req, res) => {
                      console.log("error: ", err);
                      res.status(500).send(`Problem while Adding the User. ${err}`);
                  } else {
-                     newUser.id = succeess.insertId;
+                     newUser.user_id = succeess.insertId;
                      res.status(200).send(newUser);
                  }
              });
@@ -105,7 +105,7 @@ const signIn = (req, res) => {
                 bcrypt.compare(password, user.password, (err, result) => {
                     if (result) {
                       delete user["password"];
-                      const jwToken = jwt.sign({id:user.id},'fract-api-jwt-secrect',{ expiresIn: '1h' });
+                      const jwToken = jwt.sign({id:user.user_id},'fract-api-jwt-secrect',{ expiresIn: '1h' });
                         return res.status(200).json({ message: "Logged in!", token: jwToken, user: user });
                     }
                     console.log(err);
@@ -119,47 +119,47 @@ const signIn = (req, res) => {
 }
 
 const update = (req, res) => {
-  const { id } = req.params;
-  if(!id){
+  const { user_id } = req.params;
+  if(!user_id){
     res.status(500).send('User ID is Required');
   }
   const updatedUser = req.body;
-  const updateQuery = `UPDATE ${usersTable} set ? WHERE id = ?`;
-  sql.query(updateQuery,[updatedUser, id], (err, succeess) => {
+  const updateQuery = `UPDATE ${usersTable} set ? WHERE user_id = ?`;
+  sql.query(updateQuery,[updatedUser, user_id], (err, succeess) => {
     if (err) {
       console.log("error: ", err);
-      res.status(500).send(`Problem while Updating the ${usersTable} with ID: ${id}. ${err}`);
+      res.status(500).send(`Problem while Updating the ${usersTable} with ID: ${user_id}. ${err}`);
     } else {
       if (succeess.affectedRows == 1){
         console.log(`${usersTable} UPDATED:` , succeess)
-        updatedUser.id = parseInt(id);
+        updatedUser.user_id = parseInt(user_id);
         res.status(200).send(updatedUser);
       } else {
-        res.status(404).send(`Record not found with User Details ID: ${id}`);
+        res.status(404).send(`Record not found with User Details ID: ${user_id}`);
       }
     }
   });
 };
 
 const erase = (req, res) => {
-  const { id } = req.params;
-  if(!id){
+  const { user_id } = req.params;
+  if(!user_id){
     res.status(500).send('User ID is Required');
   }
   //const updatedUser = req.body;
-  const deleteQuery = `DELETE FROM ${usersTable} WHERE id = ?`;
-  sql.query(deleteQuery,[id], (err, succeess) => {
+  const deleteQuery = `DELETE FROM ${usersTable} WHERE user_id = ?`;
+  sql.query(deleteQuery,[user_id], (err, succeess) => {
     if (err) {
       console.log("error: ", err);
-      res.status(500).send(`Problem while Deleting the ${usersTable} with ID: ${id}. ${err}`);
+      res.status(500).send(`Problem while Deleting the ${usersTable} with ID: ${user_id}. ${err}`);
     } else {
       //console.log("DEL: ", succeess)
       if (succeess.affectedRows == 1){
         console.log(`${usersTable} DELETED:` , succeess)
-        //updatedUser.id = parseInt(id);
-        res.status(200).send(`Deleted row from ${usersTable} with ID: ${id}`);
+        //updatedUser.user_id = parseInt(user_id);
+        res.status(200).send(`Deleted row from ${usersTable} with ID: ${user_id}`);
       } else {
-        res.status(404).send(`Record not found with User Details ID: ${id}`);
+        res.status(404).send(`Record not found with User Details ID: ${user_id}`);
       }
     }
   });

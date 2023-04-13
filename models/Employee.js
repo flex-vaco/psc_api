@@ -17,9 +17,9 @@ const findAll = (req, res) => {
 };
 
 const findById = (req, res) => {
-  const empDetailsId = req.params.id;
+  const empDetailsId = req.params.emp_id;
   if (empDetailsId) {
-    const query = `SELECT * FROM ${empTable} WHERE id = '${empDetailsId}'`;
+    const query = `SELECT * FROM ${empTable} WHERE emp_id = '${empDetailsId}'`;
     sql.query(query, (err, rows) => {
       if (err) {
         console.log("error: ", err);
@@ -74,54 +74,54 @@ const create = (req, res) => {
       console.log("error: ", err);
       res.status(500).send(`Problem while Adding the employee. ${err}`);
     } else {
-      newEmployee.id = succeess.insertId;
+      newEmployee.emp_id = succeess.insertId;
       res.status(200).send(newEmployee);
     }
   });
 };
 
 const update = (req, res) => {
-  const { id } = req.params;
-  if(!id){
+  const { emp_id } = req.params;
+  if(!emp_id){
     res.status(500).send('Employee ID is Required');
   }
   const updatedEmployee = req.body;
-  const updateQuery = `UPDATE ${empTable} set ? WHERE id = ?`;
-  sql.query(updateQuery,[updatedEmployee, id], (err, succeess) => {
+  const updateQuery = `UPDATE ${empTable} set ? WHERE emp_id = ?`;
+  sql.query(updateQuery,[updatedEmployee, emp_id], (err, succeess) => {
     if (err) {
       console.log("error: ", err);
-      res.status(500).send(`Problem while Updating the ${empTable} with ID: ${id}. ${err}`);
+      res.status(500).send(`Problem while Updating the ${empTable} with ID: ${emp_id}. ${err}`);
     } else {
       if (succeess.affectedRows == 1){
         console.log(`${empTable} UPDATED:` , succeess)
-        updatedEmployee.id = parseInt(id);
+        updatedEmployee.emp_id = parseInt(emp_id);
         res.status(200).send(updatedEmployee);
       } else {
-        res.status(404).send(`Record not found with Employee Details ID: ${id}`);
+        res.status(404).send(`Record not found with Employee Details ID: ${emp_id}`);
       }
     }
   });
 };
 
 const erase = (req, res) => {
-  const { id } = req.params;
-  if(!id){
+  const { emp_id } = req.params;
+  if(!emp_id){
     res.status(500).send('Employee ID is Required');
   }
   //const updatedEmployee = req.body;
-  const deleteQuery = `DELETE FROM ${empTable} WHERE id = ?`;
-  sql.query(deleteQuery,[id], (err, succeess) => {
+  const deleteQuery = `DELETE FROM ${empTable} WHERE emp_id = ?`;
+  sql.query(deleteQuery,[emp_id], (err, succeess) => {
     if (err) {
       console.log("error: ", err);
-      res.status(500).send(`Problem while Deleting the ${empTable} with ID: ${id}. ${err}`);
+      res.status(500).send(`Problem while Deleting the ${empTable} with ID: ${emp_id}. ${err}`);
     } else {
       //console.log("DEL: ", succeess)
       if (succeess.affectedRows == 1){
         console.log(`${empTable} DELETED:` , succeess)
-        //updatedEmployee.id = parseInt(id);
-        res.status(200).send(`Deleted row from ${empTable} with ID: ${id}`);
+        //updatedEmployee.emp_id = parseInt(emp_id);
+        res.status(200).send(`Deleted row from ${empTable} with ID: ${emp_id}`);
       } else {
-        res.status(404).send(`Record not found with Employee Details ID: ${id}`);
+        res.status(404).send(`Record not found with Employee Details ID: ${emp_id}`);
       }
     }
   });

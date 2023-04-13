@@ -10,8 +10,8 @@ router.use(bodyParser.urlencoded({ extended: true }));
 router.get("/", verifyToken, User.findAll);
 router.get("/:email", verifyToken, User.findByEmail);
 router.post("/sign-up", User.create);
-router.post("/update/:id", verifyToken, User.update);
-router.get("/delete/:id", verifyToken, User.erase);
+router.post("/update/:user_id", verifyToken, User.update);
+router.get("/delete/:user_id", verifyToken, User.erase);
 router.post("/sign-in", User.signIn);
 
 module.exports = router;
