@@ -1,10 +1,11 @@
 const sql = require("../lib/db.js");
 const empTable = "employee_details";
 
-const findAll = (req, res) => {
+const findAll = (req, res) => { // filters by name if params are given
+  const empName = req.params.emp_name;
   let query =`SELECT * FROM ${empTable}`;
-  if (req.query.first_name) {
-    query += ` WHERE first_name LIKE '%${req.query.first_name}%'`;
+  if (req.query.empName) {
+    query += ` WHERE first_name LIKE '%${empName}%' OR last_name LIKE '%${empName}%'`;
   }
   sql.query(query, (err, rows) => {
     if (err) {
@@ -13,7 +14,6 @@ const findAll = (req, res) => {
     }
     return res.status(200).send({employees: rows});
   });
-  //res.render("customers", { customers: rows });
 };
 
 const findById = (req, res) => {
@@ -25,7 +25,6 @@ const findById = (req, res) => {
         console.log("error: ", err);
         return res.status(500).send(`There was a problem finding the employee. ${err}`);
       }
-      // console.log("employees: ", rows);
       return res.status(200).send({employees: rows});
     });
   } else {

@@ -16,7 +16,6 @@ const findAll = (req, res) => {
       console.log("error: ", err);
       return res.status(500).send(`There was a problem getting Users. ${err}`);
     }
-    // console.log("Users: ", rows);
     return res.status(200).send({users: rows});
   });
 };
@@ -30,7 +29,6 @@ const findByEmail = (req, res) => {
         console.log("error: ", err);
         return res.status(500).send(`There was a problem finding the User. ${err}`);
       }
-      // console.log("users: ", rows);
       return res.status(200).send({user: rows[0]});
     });
   } else {
@@ -39,7 +37,6 @@ const findByEmail = (req, res) => {
 };
 
 const userExists = (email) => {
-    // Check if the email is already in use
     if (!email) {
         return false;
      }
@@ -90,9 +87,7 @@ const create = (req, res) => {
 
 const signIn = (req, res) => {
     try {
-        // Extract email and password from the req.body object
         const { email, password } = req.body;
-
         const chkUsrQuery = `SELECT * FROM ${usersTable} WHERE email = '${email}'`;
         sql.query(chkUsrQuery, (err, rows) => {
             if (err) throw new Error(`Internal Server Error: ${err}`);
@@ -105,7 +100,7 @@ const signIn = (req, res) => {
                 bcrypt.compare(password, user.password, (err, result) => {
                     if (result) {
                       delete user["password"];
-                      const jwToken = jwt.sign({id:user.user_id},'fract-api-jwt-secrect',{ expiresIn: '1h' });
+                      const jwToken = jwt.sign({id:user.user_id},'fract-api-jwt-secrect',{ expiresIn: '3h' });
                         return res.status(200).json({ message: "Logged in!", token: jwToken, user: user });
                     }
                     console.log(err);
@@ -146,17 +141,14 @@ const erase = (req, res) => {
   if(!user_id){
     res.status(500).send('User ID is Required');
   }
-  //const updatedUser = req.body;
   const deleteQuery = `DELETE FROM ${usersTable} WHERE user_id = ?`;
   sql.query(deleteQuery,[user_id], (err, succeess) => {
     if (err) {
       console.log("error: ", err);
       res.status(500).send(`Problem while Deleting the ${usersTable} with ID: ${user_id}. ${err}`);
     } else {
-      //console.log("DEL: ", succeess)
       if (succeess.affectedRows == 1){
         console.log(`${usersTable} DELETED:` , succeess)
-        //updatedUser.user_id = parseInt(user_id);
         res.status(200).send(`Deleted row from ${usersTable} with ID: ${user_id}`);
       } else {
         res.status(404).send(`Record not found with User Details ID: ${user_id}`);
