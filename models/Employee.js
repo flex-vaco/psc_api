@@ -1,5 +1,7 @@
 const sql = require("../lib/db.js");
 const empTable = "employee_details";
+const multer = require('multer');
+const path = require('path');
 
 const findAll = (req, res) => { // filters by name if params are given
   const empName = req.params.emp_name;
@@ -66,17 +68,46 @@ const search = (req, res) => {
 };
 
 const create = (req, res) => {
-  const newEmployee = req.body;
-  const insertQuery = `INSERT INTO ${empTable} set ?`;
-  sql.query(insertQuery, [newEmployee], (err, succeess) => {
-    if (err) {
-      console.log("error: ", err);
-      res.status(500).send(`Problem while Adding the employee. ${err}`);
-    } else {
-      newEmployee.emp_id = succeess.insertId;
-      res.status(200).send(newEmployee);
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      if(file.fieldname === "resume"){
+        cb(null,'public/uploads/resume');
+       }else if(file.fieldname === "profile_picture"){
+        cb(null,'public/uploads/profile_picture');
+       }
+    },
+    filename: (req, file, cb) => {
+      cb(null, `${file.fieldname}-${Date.now()}-${path.extname(file.originalname)}`);
     }
   });
+
+  var upload = multer({ storage : storage});
+  
+  var multipleUpload = upload.fields([{name:'resume'}, {name: 'profile_picture'}])
+  
+  multipleUpload(req,res,function(err) {
+    if(req.files) {
+      console.log(req);
+      newEmployee = req.body;
+      newEmployee['resume'] = req.files['resume'][0]['filename'];
+      newEmployee['profile_picture'] = req.files['profile_picture'][0]['filename'];
+      // console.log(req.file.filename);
+      console.log(newEmployee);
+      const insertQuery = `INSERT INTO ${empTable} set ?`;
+      sql.query(insertQuery, [newEmployee], (err, succeess) => {
+        if (err) {
+          console.log("error: ", err);
+          res.status(500).send(`Problem while Adding the employee. ${err}`);
+        } else {
+          newEmployee.emp_id = succeess.insertId;
+          res.status(200).send(newEmployee);
+        }
+      });
+    }else{
+      res.status(500).send(`Problem while Uploading files.`);
+    }
+  });
+  
 };
 
 const update = (req, res) => {

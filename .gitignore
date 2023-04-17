@@ -105,3 +105,6 @@ dist
 
 # Credential files
 credentials/
+
+# Uploads folder
+public/uploads
