@@ -37,20 +37,20 @@ const findById = (req, res) => {
 
 const search = (req, res) => {
    
-    const empSkill = req.query.skill;
+    const empSkills = req.query.skill;
     const empLocation =  req.query.location ?? null;
     const empExperience = req.query.exp ?? null;
     const empRole = req.query.role ??
     
     console.log(empExperience);
-    let query = `SELECT * FROM ${empTable} WHERE primary_skills LIKE '%${empSkill}%'`;
+    let query = `SELECT * FROM ${empTable} WHERE 1 = 1`;
 
     if (empLocation) {
       query = query + ` AND office_location_city LIKE '${empLocation}%'`;
     } 
 
     if (empExperience) {
-      query = query + ` AND total_work_experience_years >= ${empExperience}`;
+      query = query + ` AND total_work_experience_years = ${empExperience}`;
     }                                          
 
     if (empRole) {
@@ -61,6 +61,21 @@ const search = (req, res) => {
       if (err) {
         console.log("error: ", err);
         return res.status(500).send(`There was a problem finding the employee. ${err}`);
+      }
+      console.log(rows);
+      console.log(empSkills);
+      if (empSkills && rows) {
+            let records = rows.filter((row)=>{
+                                        let found = false;
+                                        empSkills.forEach((empSkill) => {
+                                            if (row.primary_skills.toLowerCase().indexOf(empSkill.toLowerCase()) >= 0) {
+                                              found = true;
+                                              return;    
+                                            }
+                                        }) 
+                                        return found;                                                                      
+                                      })
+          return res.status(200).send({employees: records});
       }
       console.log("employees: ", rows);
       return res.status(200).send({employees: rows});

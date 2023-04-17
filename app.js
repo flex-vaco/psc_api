@@ -8,6 +8,7 @@ const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
 const employeesRouter = require('./routes/employees');
 const projectsRouter = require('./routes/projects');
+const applicationRouter = require('./routes/application');
 const empPrjAlocRouter = require('./routes/projectAllocations');
 
 const cors = require('cors');
@@ -35,6 +36,7 @@ app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/employees', employeesRouter);
 app.use('/projects', projectsRouter);
+app.use('/application', applicationRouter);
 app.use('/empPrjAloc', empPrjAlocRouter);
 
 // catch 404 and forward to error handler
