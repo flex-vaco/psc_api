@@ -2,8 +2,14 @@ const sql = require("../lib/db.js");
 const empTable = "employee_details";
 const multer = require('multer');
 const path = require('path');
+const userACL = require('../lib/userACL.js');
 
 const findAll = (req, res) => { // filters by name if params are given
+  if (!userACL.hasEmployeeReadAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
+
   const empName = req.params.emp_name;
   let query =`SELECT * FROM ${empTable}`;
   if (req.query.empName) {
@@ -14,11 +20,16 @@ const findAll = (req, res) => { // filters by name if params are given
       console.log("error: ", err);
       return res.status(500).send(`There was a problem getting employees. ${err}`);
     }
-    return res.status(200).send({employees: rows});
+    return res.status(200).send({employees: rows, user: req.user});
   });
 };
 
 const findById = (req, res) => {
+  if (!userACL.hasEmployeeReadAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
+
   const empDetailsId = req.params.emp_id;
   if (empDetailsId) {
     const query = `SELECT * FROM ${empTable} WHERE emp_id = '${empDetailsId}'`;
@@ -27,7 +38,7 @@ const findById = (req, res) => {
         console.log("error: ", err);
         return res.status(500).send(`There was a problem finding the employee. ${err}`);
       }
-      return res.status(200).send({employees: rows});
+      return res.status(200).send({employees: rows, user: req.user});
     });
   } else {
     return res.status(500).send("Employee ID required");
@@ -36,7 +47,10 @@ const findById = (req, res) => {
 
 
 const search = (req, res) => {
-   
+  if (!userACL.hasEmployeeReadAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
     const empSkills = req.query.skill;
     const empLocation =  req.query.location ?? null;
     const empExperience = req.query.exp ?? null;
@@ -78,11 +92,16 @@ const search = (req, res) => {
           return res.status(200).send({employees: records});
       }
       console.log("employees: ", rows);
-      return res.status(200).send({employees: rows});
+      return res.status(200).send({employees: rows, user: req.user});
     });
 };
 
 const create = (req, res) => {
+  if (!userACL.hasEmployeeCreateAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
+
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
       if(file.fieldname === "resume"){
@@ -115,7 +134,8 @@ const create = (req, res) => {
           res.status(500).send(`Problem while Adding the employee. ${err}`);
         } else {
           newEmployee.emp_id = succeess.insertId;
-          res.status(200).send(newEmployee);
+          const response = {newEmployee, user: req.user};
+          res.status(200).send(response);
         }
       });
     }else{
@@ -126,6 +146,11 @@ const create = (req, res) => {
 };
 
 const update = (req, res) => {
+  if (!userACL.hasEmployeeUpdateAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
+
   const { emp_id } = req.params;
   if(!emp_id){
     res.status(500).send('Employee ID is Required');
@@ -140,7 +165,8 @@ const update = (req, res) => {
       if (succeess.affectedRows == 1){
         console.log(`${empTable} UPDATED:` , succeess)
         updatedEmployee.emp_id = parseInt(emp_id);
-        res.status(200).send(updatedEmployee);
+        const response = {updatedEmployee, user: req.user}
+        res.status(200).send(response);
       } else {
         res.status(404).send(`Record not found with Employee Details ID: ${emp_id}`);
       }
@@ -149,6 +175,11 @@ const update = (req, res) => {
 };
 
 const erase = (req, res) => {
+  if (!userACL.hasEmployeeDeleteAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
+
   const { emp_id } = req.params;
   if(!emp_id){
     res.status(500).send('Employee ID is Required');
@@ -164,7 +195,7 @@ const erase = (req, res) => {
       if (succeess.affectedRows == 1){
         console.log(`${empTable} DELETED:` , succeess)
         //updatedEmployee.emp_id = parseInt(emp_id);
-        res.status(200).send(`Deleted row from ${empTable} with ID: ${emp_id}`);
+        res.status(200).send({msg:`Deleted row from ${empTable} with ID: ${emp_id}`, user: req.user});
       } else {
         res.status(404).send(`Record not found with Employee Details ID: ${emp_id}`);
       }

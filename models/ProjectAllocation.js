@@ -1,7 +1,12 @@
 const sql = require("../lib/db.js");
 const empProjAlloc = "employee_project_allocations";
+const userACL = require('../lib/userACL.js');
 
 const findAll = (req, res) => {
+  if (!userACL.hasAllocationReadAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
     let finalResult = [];
     try {
         const alocQry = `SELECT * FROM ${empProjAlloc}`;
@@ -29,7 +34,7 @@ const findAll = (req, res) => {
                                 finalResult.push(aloc);
 
                                 if (allocations.length === (idx + 1)) {
-                                    return res.status(200).send({ empProjAlloc: finalResult });
+                                    return res.status(200).send({ empProjAlloc: finalResult, user: req.user });
                                 }
                             }
                         })
@@ -43,6 +48,10 @@ const findAll = (req, res) => {
 };
 
 const findById = async (req, res) => {
+  if (!userACL.hasAllocationReadAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
     const empProjAllocID = req.params.emp_proj_aloc_id;
     let result = [];
     if (empProjAllocID) {
@@ -70,7 +79,7 @@ const findById = async (req, res) => {
                         result.projectDetails = prjRows[0]
                     }
                     // console.log("empProjAlloc: ", rows);
-                    return res.status(200).send({ empProjAlloc: result });
+                    return res.status(200).send({ empProjAlloc: result, user: req.user });
                 })
             }
         })
@@ -80,6 +89,10 @@ const findById = async (req, res) => {
 };
 
 const create = (req, res) => {
+  if (!userACL.hasAllocationCreateAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
   const newAllocation = req.body;
   const insertQuery = `INSERT INTO ${empProjAlloc} set ?`;
   sql.query(insertQuery, [newAllocation], (err, succeess) => {
@@ -88,12 +101,17 @@ const create = (req, res) => {
       res.status(500).send(`Problem while Allocating Project to Employee. ${err}`);
     } else {
       newAllocation.emp_proj_aloc_id = succeess.insertId;
-      res.status(200).send(newAllocation);
+      const response = {newAllocation,user: req.user};
+      res.status(200).send(response);
     }
   });
 };
 
 const update = (req, res) => {
+  if (!userACL.hasAllocationUpdateAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
   const { emp_proj_aloc_id } = req.params;
   if(!emp_proj_aloc_id){
     res.status(500).send('Employee-Project-Allocation ID is Required');
@@ -108,7 +126,8 @@ const update = (req, res) => {
       if (succeess.affectedRows == 1){
         console.log(`${empProjAlloc} UPDATED:` , succeess)
         updatedAllocation.emp_proj_aloc_id = parseInt(emp_proj_aloc_id);
-        res.status(200).send(updatedAllocation);
+        const response = {updatedAllocation, user: req.user}
+        res.status(200).send(response);
       } else {
         res.status(404).send(`Record not found with ID: ${emp_proj_aloc_id}`);
       }
@@ -117,6 +136,10 @@ const update = (req, res) => {
 };
 
 const erase = (req, res) => {
+  if (!userACL.hasAllocationDeleteAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
   const { emp_proj_aloc_id } = req.params;
   if(!emp_proj_aloc_id){
     res.status(500).send('Employee-Project-Allocation ID is Required');
@@ -130,7 +153,7 @@ const erase = (req, res) => {
       //console.log("DEL: ", succeess)
       if (succeess.affectedRows == 1){
         console.log(`${empProjAlloc} DELETED:` , succeess)
-        res.status(200).send(`Deleted row from ${empProjAlloc} with ID: ${emp_proj_aloc_id}`);
+        res.status(200).send({msg: `Deleted row from ${empProjAlloc} with ID: ${emp_proj_aloc_id}`, user: req.user});
       } else {
         res.status(404).send(`Record not found with ID: ${emp_proj_aloc_id}`);
       }

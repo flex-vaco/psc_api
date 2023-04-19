@@ -1,8 +1,7 @@
-const { token } = require("morgan");
 const sql = require("../lib/db.js");
 const bcrypt = require("bcrypt");
 const jwt = require('jsonwebtoken');
-
+require('dotenv').config();
 
 const usersTable = "users";
 
@@ -100,7 +99,7 @@ const signIn = (req, res) => {
                 bcrypt.compare(password, user.password, (err, result) => {
                     if (result) {
                       delete user["password"];
-                      const jwToken = jwt.sign({id:user.user_id},'fract-api-jwt-secrect',{ expiresIn: '3h' });
+                      const jwToken = jwt.sign({user:user},process.env.JWT_SECRET,{ expiresIn: '3h' });
                         return res.status(200).json({ message: "Logged in!", token: jwToken, user: user });
                     }
                     console.log(err);
@@ -109,7 +108,7 @@ const signIn = (req, res) => {
             }
         })
     } catch (error) {
-        res.status(401).send(err.message);
+        res.status(401).send(error.message);
     }
 }
 

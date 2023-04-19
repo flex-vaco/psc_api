@@ -1,7 +1,12 @@
 const sql = require("../lib/db.js");
 const projectTable = "project_details";
+const userACL = require('../lib/userACL.js');
 
 const findAll = (req, res) => {
+  if (!userACL.hasProjectReadAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
   let query =`SELECT * FROM ${projectTable}`;
   if (req.query.first_name) {
     query += ` WHERE first_name LIKE '%${req.query.first_name}%'`;
@@ -11,13 +16,15 @@ const findAll = (req, res) => {
       console.log("error: ", err);
       return res.status(500).send(`There was a problem getting projects. ${err}`);
     }
-    // console.log("projects: ", rows);
-    return res.status(200).send({projects: rows});
+    return res.status(200).send({projects: rows, user: req.user});
   });
-  //res.render("customers", { customers: rows });
 };
 
 const findById = (req, res) => {
+  if (!userACL.hasProjectReadAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
   const projectDetailsId = req.params.project_id;
   if (projectDetailsId) {
     const query = `SELECT * FROM ${projectTable} WHERE project_id = '${projectDetailsId}'`;
@@ -27,7 +34,7 @@ const findById = (req, res) => {
         return res.status(500).send(`There was a problem finding the Project. ${err}`);
       }
       // console.log("projects: ", rows);
-      return res.status(200).send({projects: rows});
+      return res.status(200).send({projects: rows, user: req.user});
     });
   } else {
     return res.status(500).send("Project ID required");
@@ -35,6 +42,10 @@ const findById = (req, res) => {
 };
 
 const create = (req, res) => {
+  if (!userACL.hasProjectCreateAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
   const newProject = req.body;
   const insertQuery = `INSERT INTO ${projectTable} set ?`;
   sql.query(insertQuery, [newProject], (err, succeess) => {
@@ -43,12 +54,17 @@ const create = (req, res) => {
       res.status(500).send(`Problem while Adding the Project. ${err}`);
     } else {
       newProject.project_id = succeess.insertId;
-      res.status(200).send(newProject);
+      const response = {newProject, user: req.user}
+      res.status(200).send(response);
     }
   });
 };
 
 const update = (req, res) => {
+  if (!userACL.hasProjectUpdateAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
   const { project_id } = req.params;
   if(!project_id){
     res.status(500).send('Project ID is Required');
@@ -63,7 +79,8 @@ const update = (req, res) => {
       if (succeess.affectedRows == 1){
         console.log(`${projectTable} UPDATED:` , succeess)
         updatedProject.project_id = parseInt(project_id);
-        res.status(200).send(updatedProject);
+        const response = {updatedProject, user: req.user}
+        res.status(200).send(response);
       } else {
         res.status(404).send(`Record not found with Project Details ID: ${project_id}`);
       }
@@ -72,6 +89,10 @@ const update = (req, res) => {
 };
 
 const erase = (req, res) => {
+  if (!userACL.hasProjectDeleteAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
   const { project_id } = req.params;
   if(!project_id){
     res.status(500).send('Project ID is Required');
@@ -87,7 +108,7 @@ const erase = (req, res) => {
       if (succeess.affectedRows == 1){
         console.log(`${projectTable} DELETED:` , succeess)
         //updatedProject.project_id = parseInt(project_id);
-        res.status(200).send(`Deleted row from ${projectTable} with ID: ${project_id}`);
+        res.status(200).send({msg: `Deleted row from ${projectTable} with ID: ${project_id}`, user: req.user});
       } else {
         res.status(404).send(`Record not found with Project Details ID: ${project_id}`);
       }
