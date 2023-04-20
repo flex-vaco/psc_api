@@ -161,10 +161,62 @@ const erase = (req, res) => {
   });
 };
 
+const findEmpByProjectId = async (req, res) => {
+  if (!userACL.hasUtilizationCreateAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
+  const empProjID = req.params.emp_proj_id;
+  let result = [];
+  if (empProjID) {
+    let query =`SELECT emp_details.* FROM employee_details emp_details, ${empProjAlloc} emp_project_alloc`;
+    
+    query += ` WHERE emp_details.emp_id=emp_project_alloc.emp_id and emp_project_alloc.project_id = '${empProjID}'`;
+
+    sql.query(query, (err, rows) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(500).send(`There was a problem getting projects. ${err}`);
+      }
+      // console.log("projects: ", rows);
+      return res.status(200).send({employees: rows});
+    });
+  } else {
+      return res.status(500).send("Employee-Project-Allocation ID required");
+  }
+};
+
+const findByEmpProjectId = (req, res) => {
+  if (!userACL.hasUtilizationCreateAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
+  const empId = req.body.emp_id;
+  const projectId = req.body.project_id;
+  console.log(req.body.emp_id);
+  console.log('inside project_employees_alloc');
+  if (projectId, empId) {
+    let query =`SELECT * FROM ${empProjAlloc} WHERE emp_id = '${empId}' and project_id = '${projectId}'`;
+    
+    sql.query(query, (err, rows) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(500).send(`There was a problem getting Allocation Details. ${err}`);
+      }
+      // console.log("projects: ", rows);
+      return res.status(200).send({allocations: rows});
+    });
+  } else {
+      return res.status(500).send("Employee, Project ID required");
+  }
+};
+
 module.exports = {
   findAll,
   findById,
   create,
   update,
-  erase
+  erase,
+  findEmpByProjectId,
+  findByEmpProjectId
 }
