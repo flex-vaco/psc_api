@@ -8,10 +8,11 @@ const verifyToken = require('../lib/verifyJWToken.js');
 router.use(bodyParser.urlencoded({ extended: true }));
 
 router.get("/", verifyToken, User.findAll);
-router.get("/:email", verifyToken, User.findByEmail);
+router.get("/:user_id", verifyToken, User.findById);
 router.post("/sign-up", User.create);
 router.post("/update/:user_id", verifyToken, User.update);
 router.get("/delete/:user_id", verifyToken, User.erase);
 router.post("/sign-in", User.signIn);
+router.get("/roles", verifyToken, User.getUserRoles);
 
 module.exports = router;

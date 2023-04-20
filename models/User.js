@@ -35,19 +35,35 @@ const findByEmail = (req, res) => {
   }
 };
 
-const userExists = (email) => {
-    if (!email) {
-        return false;
-     }
-        const query = `SELECT * FROM ${usersTable} WHERE email = '${email}'`;
-        sql.query(query, (err, rows) => {
-            if (err) {
-                console.log("error: ", err);
-                return false;
-            }
-            return rows.length >=1 ? true : false;
-        });
+const findById = (req, res) => {
+  const userId = req.params.user_id;
+  
+  if (userId) {
+    const query = `SELECT * FROM ${usersTable} WHERE user_id = '${userId}'`;
+    sql.query(query, (err, rows) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(500).send(`There was a problem finding the User. ${err}`);
+      }
+      return res.status(200).send({user: rows[0]});
+    });
+  } else {
+    return res.status(500).send("User ID required");
+  }
+};
 
+const getUserRoles = (req, res) => {
+  let query ="SELECT * FROM user_roles";
+  console.log("RRRRR", query)
+
+  sql.query(query, (err, rows) => {
+    if (err) {
+      console.log("error: ", err);
+      return res.status(500).send(`There was a problem getting User Roles. ${err}`);
+    }
+    console.log("RRRRR", rows)
+    return res.status(200).send({user_roles: rows});
+  });
 };
 
 const create = (req, res) => {
@@ -158,9 +174,11 @@ const erase = (req, res) => {
 
 module.exports = {
   findAll,
+  findById,
   findByEmail,
   create,
   update,
   erase,
-  signIn
+  signIn,
+  getUserRoles
 }
