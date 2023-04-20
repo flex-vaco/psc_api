@@ -88,6 +88,23 @@ const findById = async (req, res) => {
     }
 };
 
+const findByEmpId = (req, res) => {
+  const empid = req.query.empid;
+  try {
+      const alocQry = `SELECT * FROM ${empProjAlloc} WHERE emp_id = ${empid}` ;
+
+      sql.query(alocQry, (err, allocations) => {
+          if (err) {
+              console.log("ProjectAllocation:: Err getting rows: ", err);
+              return res.status(500).send(`Problem getting records. ${err}`);
+          }
+          return res.status(200).send({employee_allocation: allocations});
+      });
+  } catch (err) {
+      console.log("ProjectAllocation:: Unkown Err:", err);
+  }
+};
+
 const create = (req, res) => {
   if (!userACL.hasAllocationCreateAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
@@ -218,5 +235,6 @@ module.exports = {
   update,
   erase,
   findEmpByProjectId,
-  findByEmpProjectId
+  findByEmpProjectId,
+  findByEmpId
 }

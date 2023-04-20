@@ -54,7 +54,7 @@ const search = (req, res) => {
     const empSkills = req.query.skill;
     const empLocation =  req.query.location ?? null;
     const empExperience = req.query.exp ?? null;
-    const empRole = req.query.role ??
+    const empRole = req.query.role ?? null;
     
     console.log(empExperience);
     let query = `SELECT * FROM ${empTable} WHERE 1 = 1`;
