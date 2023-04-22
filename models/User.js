@@ -54,14 +54,12 @@ const findById = (req, res) => {
 
 const getUserRoles = (req, res) => {
   let query ="SELECT * FROM user_roles";
-  console.log("RRRRR", query)
 
   sql.query(query, (err, rows) => {
     if (err) {
       console.log("error: ", err);
       return res.status(500).send(`There was a problem getting User Roles. ${err}`);
     }
-    console.log("RRRRR", rows)
     return res.status(200).send({user_roles: rows});
   });
 };

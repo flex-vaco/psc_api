@@ -13,6 +13,6 @@ router.post("/sign-up", User.create);
 router.post("/update/:user_id", verifyToken, User.update);
 router.get("/delete/:user_id", verifyToken, User.erase);
 router.post("/sign-in", User.signIn);
-router.get("/roles", verifyToken, User.getUserRoles);
+router.post("/roles", verifyToken, User.getUserRoles);
 
 module.exports = router;
