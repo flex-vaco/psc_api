@@ -24,7 +24,10 @@ const getTechnologies = (req, res) => {
     }
     let techSkills = [];
     if (rows) {
-      techSkills = Array.from(new Set(rows[0].tech_skills.split(',')));
+      techSkills = rows[0].tech_skills.split(',').map((skill) => {
+                        return skill.trim().replace(/(^\w|\s\w)/g, m => m.toUpperCase());                 
+      });
+      techSkills = Array.from(new Set(techSkills));
       console.log(techSkills);
     }
     return res.status(200).send({technologies: techSkills});

@@ -82,7 +82,7 @@ const search = (req, res) => {
             let records = rows.filter((row)=>{
                                         let found = false;
                                         empSkills.forEach((empSkill) => {
-                                            if (row.primary_skills.toLowerCase().indexOf(empSkill.toLowerCase()) >= 0) {
+                                            if (row.primary_skills.toLowerCase().indexOf(empSkill.trim().toLowerCase()) >= 0) {
                                               found = true;
                                               return;    
                                             }
