@@ -15,7 +15,7 @@ const getCategories = (req, res) => {
 };
 
 const getTechnologies = (req, res) => {
-  let query =`SELECT group_concat(primary_skills) as tech_skills FROM ${empTable}`;
+  let query =`SELECT group_concat(secondary_skills) as tech_skills FROM ${empTable}`;
   console.log("error: ", query);
   sql.query(query, (err, rows) => {
     if (err) {

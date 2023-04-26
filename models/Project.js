@@ -7,6 +7,7 @@ const findAll = (req, res) => {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
     return res.status(404).send({error: true, message: msg});
   }
+  let finalResult = [];
   let query =`SELECT * FROM ${projectTable}`;
   if (req.query.first_name) {
     query += ` WHERE first_name LIKE '%${req.query.first_name}%'`;
@@ -16,7 +17,23 @@ const findAll = (req, res) => {
       console.log("error: ", err);
       return res.status(500).send(`There was a problem getting projects. ${err}`);
     }
-    return res.status(200).send({projects: rows, user: req.user});
+    rows.forEach((row, idx) => {
+      const clientQry = `SELECT * FROM clients WHERE client_id = '${row.client_id}'`;
+      sql.query(clientQry, (err, clientRows) => {
+          if (err) {
+              console.log("Project: Err getting Client details:", err);
+              return res.status(500).send(`Problem getting records. ${err}`);
+          } else {
+              row.clientDetails = clientRows[0];
+              finalResult.push(row);
+
+              if (rows.length === (idx + 1)) {
+                  return res.status(200).send({ projects: finalResult, user: req.user });
+              }
+          }
+      })      
+              
+    })
   });
 };
 

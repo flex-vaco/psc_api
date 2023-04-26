@@ -44,11 +44,21 @@ const forecastHours = (req, res) => {
                                 return res.status(500).send(`Problem getting records. ${err}`);
                             } else {
                                 utili.projectDetails = prjRows[0];
-                                finalResult.push(utili);
+                                const clientQry = `SELECT * FROM clients WHERE client_id = '${prjRows[0].client_id}'`;
+                                sql.query(clientQry, (err, clientRows) => {
+                                    if (err) {
+                                        console.log("ProjectUtilization:: Err getting Project details:", err);
+                                        return res.status(500).send(`Problem getting records. ${err}`);
+                                    } else {
+                                        utili.clientDetails = clientRows[0]; 
+                                        finalResult.push(utili);
                                 
-                                if (utilizations.length === (idx + 1)) {
-                                    return res.status(200).send({ empForecastResults: finalResult, finalDates: finalDates });
-                                }
+                                        if (utilizations.length === (idx + 1)) {
+                                            return res.status(200).send({ empForecastResults: finalResult, finalDates: finalDates });
+                                        }
+                                    }
+                                })
+                                
                             }
                         })
                     }
@@ -102,11 +112,20 @@ const forecastHours = (req, res) => {
                                 return res.status(500).send(`Problem getting records. ${err}`);
                             } else {
                                 utili.projectDetails = prjRows[0];
-                                finalResult.push(utili);
+                                const clientQry = `SELECT * FROM clients WHERE client_id = '${prjRows[0].client_id}'`;
+                                sql.query(clientQry, (err, clientRows) => {
+                                    if (err) {
+                                        console.log("ProjectUtilization:: Err getting Project details:", err);
+                                        return res.status(500).send(`Problem getting records. ${err}`);
+                                    } else {
+                                        utili.clientDetails = clientRows[0]; 
+                                        finalResult.push(utili);
                                 
-                                if (utilizations.length === (idx + 1)) {
-                                    return res.status(200).send({ empForecastResults: finalResult, finalDates: finalDates });
-                                }
+                                        if (utilizations.length === (idx + 1)) {
+                                            return res.status(200).send({ empForecastResults: finalResult, finalDates: finalDates });
+                                        }
+                                    }
+                                })
                             }
                         })
                     }
