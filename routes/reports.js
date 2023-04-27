@@ -7,7 +7,7 @@ const verifyToken = require('../lib/verifyJWToken.js');
 
 router.use(bodyParser.urlencoded({ extended: true }));
 
-router.get("/forecastHours", verifyToken, Report.forecastHours);
-router.get("/availableHours", verifyToken, Report.availableHours);
+router.post("/forecastHours", verifyToken, Report.forecastHours);
+router.post("/availableHours", verifyToken, Report.availableHours);
 
 module.exports = router;
