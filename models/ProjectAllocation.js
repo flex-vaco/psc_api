@@ -16,7 +16,8 @@ const findAll = (req, res) => {
                 console.log("ProjectAllocation:: Err getting rows: ", err);
                 return res.status(500).send(`Problem getting records. ${err}`);
             }
-            allocations.forEach((aloc, idx) => {
+            let recCount = 0;
+            allocations.forEach((aloc) => {
                 const empQry = `SELECT * FROM employee_details WHERE emp_id = '${aloc.emp_id}'`;
                 sql.query(empQry, (err, empRows) => {
                     if (err) {
@@ -32,8 +33,8 @@ const findAll = (req, res) => {
                             } else {
                                 aloc.projectDetails = prjRows[0];
                                 finalResult.push(aloc);
-
-                                if (allocations.length === (idx + 1)) {
+                                recCount = recCount+1;
+                                if (recCount === allocations.length) {
                                     return res.status(200).send({ empProjAlloc: finalResult, user: req.user });
                                 }
                             }
@@ -238,3 +239,18 @@ module.exports = {
   findByEmpProjectId,
   findByEmpId
 }
+
+// === Queries to join the emp/project with Allocations
+        // const joinQry = `SELECT * FROM ${empProjAlloc} emp_prj_alc
+        // JOIN employee_details emp ON emp.emp_id = emp_prj_alc.emp_id
+        // JOIN project_details prj ON prj.project_id = emp_prj_alc.project_id
+        //  WHERE emp_proj_aloc_id = '${empProjAllocID}'`
+
+// === Variation Query to join the emp/project with Allocations, with a division in between joins
+        // const joinQuery = `SELECT '' as emp_prj_alc, ${empProjAlloc}.*,
+        //                     '' as empDetails, employee_details.*, 
+        //                     '' as projectDetails, project_details.*  
+        //                     FROM employee_project_allocations
+        //                     JOIN employee_details ON employee_details.emp_id = ${empProjAlloc}.emp_id
+        //                     JOIN project_details ON project_details.project_id = ${empProjAlloc}.project_id
+        //                     WHERE emp_proj_aloc_id = '${empProjAllocID}'`

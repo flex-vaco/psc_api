@@ -28,7 +28,8 @@ const forecastHours = (req, res) => {
                 console.log("ProjectUtilization:: Err getting rows: ", err);
                 return res.status(500).send(`Problem getting records. ${err}`);
             }
-            utilizations.forEach((utili, idx) => {
+            let recCount = 0;
+            utilizations.forEach((utili) => {
                 const empQry = `SELECT * FROM employee_details WHERE emp_id = '${utili.emp_id}'`;
                 sql.query(empQry, (err, empRows) => {
                     if (err) {
@@ -51,8 +52,8 @@ const forecastHours = (req, res) => {
                                     } else {
                                         utili.clientDetails = clientRows[0]; 
                                         finalResult.push(utili);
-                                
-                                        if (utilizations.length === (idx + 1)) {
+                                        recCount = recCount+1;
+                                        if (recCount === utilizations.length) {
                                             return res.status(200).send({ empForecastResults: finalResult, finalDates: finalDates });
                                         }
                                     }
@@ -95,7 +96,8 @@ const forecastHours = (req, res) => {
                 console.log("ProjectUtilization:: Err getting rows: ", err);
                 return res.status(500).send(`Problem getting records. ${err}`);
             }
-            utilizations.forEach((utili, idx) => {
+            let recCount = 0;
+            utilizations.forEach((utili) => {
                 const empQry = `SELECT * FROM employee_details WHERE emp_id = '${utili.emp_id}'`;
                 sql.query(empQry, (err, empRows) => {
                     if (err) {
@@ -118,8 +120,8 @@ const forecastHours = (req, res) => {
                                     } else {
                                         utili.clientDetails = clientRows[0]; 
                                         finalResult.push(utili);
-                                
-                                        if (utilizations.length === (idx + 1)) {
+                                        recCount = recCount+1
+                                        if (recCount === utilizations.length) {
                                             return res.status(200).send({ empForecastResults: finalResult, finalDates: finalDates });
                                         }
                                     }

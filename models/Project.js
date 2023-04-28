@@ -17,7 +17,8 @@ const findAll = (req, res) => {
       console.log("error: ", err);
       return res.status(500).send(`There was a problem getting projects. ${err}`);
     }
-    rows.forEach((row, idx) => {
+    let recCount = 0;
+    rows.forEach((row) => {
       const clientQry = `SELECT * FROM clients WHERE client_id = '${row.client_id}'`;
       sql.query(clientQry, (err, clientRows) => {
           if (err) {
@@ -26,8 +27,8 @@ const findAll = (req, res) => {
           } else {
               row.clientDetails = clientRows[0];
               finalResult.push(row);
-
-              if (rows.length === (idx + 1)) {
+              recCount = recCount+1;
+              if (recCount === rows.length) {
                   return res.status(200).send({ projects: finalResult, user: req.user });
               }
           }

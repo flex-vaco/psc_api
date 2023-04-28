@@ -16,7 +16,8 @@ const findAll = (req, res) => {
               console.log("ProjectUtilization:: Err getting rows: ", err);
               return res.status(500).send(`Problem getting records. ${err}`);
           }
-          utilizations.forEach((utili, idx) => {
+          let recCount = 0;
+          utilizations.forEach((utili) => {
               const empQry = `SELECT * FROM employee_details WHERE emp_id = '${utili.emp_id}'`;
               sql.query(empQry, (err, empRows) => {
                   if (err) {
@@ -32,8 +33,8 @@ const findAll = (req, res) => {
                           } else {
                               utili.projectDetails = prjRows[0];
                               finalResult.push(utili);
-
-                              if (utilizations.length === (idx + 1)) {
+                              recCount=recCount+1;
+                              if (recCount === utilizations.length) {
                                   return res.status(200).send({ empProjUtili: finalResult });
                               }
                           }
