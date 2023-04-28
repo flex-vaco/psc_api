@@ -15,23 +15,39 @@ const getCategories = (req, res) => {
 };
 
 const getTechnologies = (req, res) => {
-  let query =`SELECT group_concat(secondary_skills) as tech_skills FROM ${empTable}`;
-  console.log("error: ", query);
+  let query =`SELECT secondary_skills, primary_skills FROM ${empTable}`;
   sql.query(query, (err, rows) => {
     if (err) {
       console.log("error: ", err);
       return res.status(500).send(`There was a problem getting technologies. ${err}`);
     }
-    let techSkills = [];
-    if (rows) {
-      techSkills = rows[0].tech_skills.split(',').map((skill) => {
-                        return skill.trim().replace(/(^\w|\s\w)/g, m => m.toUpperCase());                 
-      });
-      techSkills = Array.from(new Set(techSkills));
-      console.log(techSkills);
+    const empSkills = req.query.skill;
+    let records = rows;
+    if (empSkills && rows) {
+          records = rows.filter((row)=>{
+                                    let found = false;
+                                    empSkills.forEach((empSkill) => {
+                                        let primarySkillList = row.primary_skills.split(',');
+                                        primarySkillList.filter((skill)=> {
+                                          if (skill.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
+                                            found = true;
+                                            return found;
+                                          }
+                                        })
+                                    }) 
+                                    return found;                                                                      
+                                  })
     }
-    return res.status(200).send({technologies: techSkills});
-  });
+
+        records = records.map((record) => { return record.secondary_skills;});
+        records = records.join(',').split(',').map((skill) => {
+                          return skill.trim().replace(/(^\w|\s\w)/g, m => m.toUpperCase());         
+                          }).filter((skill) => { return skill !== '' });
+        records = Array.from(new Set(records));
+        
+        return res.status(200).send({technologies: records});
+    
+});
 };
 
 module.exports = {

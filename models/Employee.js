@@ -56,7 +56,6 @@ const search = (req, res) => {
     const empExperience = req.query.exp ?? null;
     const empRole = req.query.role ?? null;
     
-    console.log(empExperience);
     let query = `SELECT * FROM ${empTable} WHERE 1 = 1`;
 
     if (empLocation) {
@@ -76,22 +75,22 @@ const search = (req, res) => {
         console.log("error: ", err);
         return res.status(500).send(`There was a problem finding the employee. ${err}`);
       }
-      console.log(rows);
-      console.log(empSkills);
       if (empSkills && rows) {
             let records = rows.filter((row)=>{
                                         let found = false;
                                         empSkills.forEach((empSkill) => {
-                                            if (row.primary_skills.toLowerCase().indexOf(empSkill.trim().toLowerCase()) >= 0) {
-                                              found = true;
-                                              return;    
-                                            }
+                                             let primarySkillList = row.primary_skills.split(',');
+                                             primarySkillList.filter((skill)=> {
+                                                    if (skill.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
+                                                      found = true;
+                                                      return found;
+                                                    }
+                                             })
                                         }) 
                                         return found;                                                                      
                                       })
-          return res.status(200).send({employees: records});
+          return res.status(200).send({employees: records, user: req.user});
       }
-      console.log("employees: ", rows);
       return res.status(200).send({employees: rows, user: req.user});
     });
 };
