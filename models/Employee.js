@@ -101,6 +101,7 @@ const create = (req, res) => {
     return res.status(404).send({error: true, message: msg});
   }
 
+  const fileNameSuffix = Date.now();
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
       if(file.fieldname === "resume"){
@@ -110,7 +111,7 @@ const create = (req, res) => {
        }
     },
     filename: (req, file, cb) => {
-      cb(null, `${file.fieldname}-${Date.now()}-${path.extname(file.originalname)}`);
+      cb(null, `${file.fieldname}-${fileNameSuffix}${path.extname(file.originalname)}`);
     }
   });
 
@@ -147,30 +148,71 @@ const create = (req, res) => {
 const update = (req, res) => {
   if (!userACL.hasEmployeeUpdateAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
-    return res.status(404).send({error: true, message: msg});
+    return res.status(404).send({ error: true, message: msg });
   }
 
   const { emp_id } = req.params;
-  if(!emp_id){
-    res.status(500).send('Employee ID is Required');
+  if (!emp_id) {
+    res.status(500).send({ error: true, message:'Employee ID is Required'});
   }
-  const updatedEmployee = req.body;
-  const updateQuery = `UPDATE ${empTable} set ? WHERE emp_id = ?`;
-  sql.query(updateQuery,[updatedEmployee, emp_id], (err, succeess) => {
-    if (err) {
-      console.log("error: ", err);
-      res.status(500).send(`Problem while Updating the ${empTable} with ID: ${emp_id}. ${err}`);
-    } else {
-      if (succeess.affectedRows == 1){
-        console.log(`${empTable} UPDATED:` , succeess)
-        updatedEmployee.emp_id = parseInt(emp_id);
-        const response = {updatedEmployee, user: req.user}
-        res.status(200).send(response);
-      } else {
-        res.status(404).send(`Record not found with Employee Details ID: ${emp_id}`);
+  const fileNameSuffix = Date.now();
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      if (file.fieldname === "resume") {
+        cb(null, "public/uploads/resume");
+      } else if (file.fieldname === "profile_picture") {
+        cb(null, 'public/uploads/profile_picture');
+      }
+    },
+    filename: (req, file, cb) => {
+      console.log("Insidee STORAGE ", req.body.profile_pic_file_name, req.body.resume_file_name);
+      if (file.fieldname === "resume") {
+        //Use the exisitng file-name if it has one
+        if (req.body.resume_file_name && ![null, 'null'].includes(req.body.resume_file_name)) {
+          cb(null, req.body.resume_file_name);
+        } else {
+          cb(null, `${file.fieldname}-${fileNameSuffix}${path.extname(file.originalname)}`);
+        }
+      } else if (file.fieldname === "profile_picture") {
+        //Use the exisitng file-name if it has one
+        if (req.body.profile_pic_file_name && ![null, 'null'].includes(req.body.profile_pic_file_name)) {
+          cb(null, req.body.profile_pic_file_name);
+        } else {
+          cb(null, `${file.fieldname}-${fileNameSuffix}${path.extname(file.originalname)}`);
+        }
       }
     }
   });
+
+  const upload = multer({ storage: storage });
+  const fileUploader = upload.fields([{ name: 'resume' }, { name: 'profile_picture' }]);
+
+  fileUploader(req, res, (err)=> {
+    const updatedEmployee = req.body;
+
+    if (req.files?.resume) updatedEmployee['resume'] = req.files.resume[0]['filename'];
+    if (req.files?.profile_picture)  updatedEmployee['profile_picture'] = req.files['profile_picture'][0]['filename'];
+     
+    delete(updatedEmployee.resume_file_name);
+    delete(updatedEmployee.profile_pic_file_name);
+
+    const updateQuery = `UPDATE ${empTable} set ? WHERE emp_id = ?`;
+    sql.query(updateQuery, [updatedEmployee, emp_id], (err, success) => {
+      if (err) {
+        console.log("error: ", err);
+        res.status(500).send(`Problem while Updating the ${empTable} with ID: ${emp_id}. ${err}`);
+      } else {
+        if (success.affectedRows == 1) {
+          updatedEmployee.emp_id = parseInt(emp_id);
+          const response = { updatedEmployee, user: req.user }
+          res.status(200).send(response);
+        } else {
+          res.status(404).send({error: true, message:`Record not found with Employee Details ID: ${emp_id}`});
+        }
+      }
+    });
+  });
+
 };
 
 const erase = (req, res) => {
