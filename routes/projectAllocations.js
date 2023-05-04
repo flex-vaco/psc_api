@@ -15,5 +15,6 @@ router.post("/update/:emp_proj_aloc_id", verifyToken, ProjectAllocation.update);
 router.get("/delete/:emp_proj_aloc_id", verifyToken, ProjectAllocation.erase);
 router.get("/project-employees/:emp_proj_id", verifyToken, ProjectAllocation.findEmpByProjectId);
 router.post("/project_employees_alloc", verifyToken, ProjectAllocation.findByEmpProjectId);
+router.post("/empPrjAlcToday", verifyToken, ProjectAllocation.empProjAllocAsOnToday);
 
 module.exports = router;

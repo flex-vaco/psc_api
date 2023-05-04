@@ -2,6 +2,30 @@ const sql = require("../lib/db.js");
 const empProjAlloc = "employee_project_allocations";
 const userACL = require('../lib/userACL.js');
 
+const empProjAllocAsOnToday = (req, res) => {
+  if (!userACL.hasAllocationReadAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
+    const emp_id = req.body?.empId;
+    try { 
+      const empPrjAlcQry = `SELECT SUM(hours_per_day)*5 as alc_per_week, emp_id
+         FROM ${empProjAlloc}
+         WHERE CURDATE() BETWEEN start_date AND end_date
+         AND emp_id = ${emp_id}
+         group by emp_id`;
+        sql.query(empPrjAlcQry, (err, empPrjAlcToday) => {
+            if (err) {
+              console.log("ERRR",err)
+              return res.status(500).send(`Problem getting records. ${err}`);
+            }
+            return res.status(200).send({ empProjAllocToday: empPrjAlcToday, user: req.user });
+        });
+    } catch (err) {
+        console.log("ProjectAllocation:: Error:", err);
+    }
+};
+
 const findAll = (req, res) => {
   if (!userACL.hasAllocationReadAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
@@ -237,5 +261,6 @@ module.exports = {
   erase,
   findEmpByProjectId,
   findByEmpProjectId,
-  findByEmpId
+  findByEmpId,
+  empProjAllocAsOnToday
 }
