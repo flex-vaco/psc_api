@@ -63,7 +63,7 @@ const search = (req, res) => {
     } 
 
     if (empExperience) {
-      query = query + ` AND total_work_experience_years = ${empExperience}`;
+      query = query + ` AND total_work_experience_years <= ${empExperience}`;
     }                                          
 
     if (empRole) {
