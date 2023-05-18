@@ -1,6 +1,7 @@
 const sql = require("../lib/db.js");
 const empProjAlloc = "employee_project_allocations";
 const userACL = require('../lib/userACL.js');
+const APP_CONSTANTS = require('../lib/appConstants.js');
 
 const empProjAllocAsOnToday = (req, res) => {
   if (!userACL.hasAllocationReadAccess(req.user.role)) {
@@ -33,8 +34,15 @@ const findAll = (req, res) => {
   }
     let finalResult = [];
     try {
-        const alocQry = `SELECT * FROM ${empProjAlloc}`;
-
+         let alocQry = '';
+         if(req.user.role == APP_CONSTANTS.USER_ROLES.PRODUCER) {
+           const producerClientId = req.user.client_id || null;
+           alocQry = `SELECT * FROM ${empProjAlloc}
+           join project_details on ${empProjAlloc}.project_id = project_details.project_id
+           WHERE project_details.client_id = ${producerClientId}`
+         } else {
+           alocQry = `SELECT * FROM ${empProjAlloc}`;
+         }
         sql.query(alocQry, (err, allocations) => {
             if (err) {
                 console.log("ProjectAllocation:: Err getting rows: ", err);
@@ -80,7 +88,16 @@ const findById = async (req, res) => {
     const empProjAllocID = req.params.emp_proj_aloc_id;
     let result = [];
     if (empProjAllocID) {
-        const query = `SELECT * FROM ${empProjAlloc} WHERE emp_proj_aloc_id = '${empProjAllocID}'`;
+        let query = ""; 
+        if(req.user.role == APP_CONSTANTS.USER_ROLES.PRODUCER) {
+          const producerClientId = req.user.client_id || null;
+          query = `SELECT * FROM ${empProjAlloc}
+          join project_details on ${empProjAlloc}.project_id = project_details.project_id
+          WHERE project_details.client_id = ${producerClientId}
+          AND emp_proj_aloc_id = '${empProjAllocID}'`
+        } else {
+          query = `SELECT * FROM ${empProjAlloc} WHERE emp_proj_aloc_id = '${empProjAllocID}'`;
+        }
         sql.query(query, async (err, alocRows) => {
             if (err) {
                 console.log("error: ", err);
@@ -116,8 +133,16 @@ const findById = async (req, res) => {
 const findByEmpId = (req, res) => {
   const empid = req.query.empid;
   try {
-      const alocQry = `SELECT * FROM ${empProjAlloc} WHERE emp_id = ${empid}` ;
-
+      let alocQry =  '';
+      if(req.user.role == APP_CONSTANTS.USER_ROLES.PRODUCER) {
+        const producerClientId = req.user.client_id || null;
+        alocQry = `SELECT * FROM ${empProjAlloc}
+        join project_details on ${empProjAlloc}.project_id = project_details.project_id
+        WHERE project_details.client_id = ${producerClientId}
+        AND emp_id = '${empid}'`
+      } else {
+        alocQry = `SELECT * FROM ${empProjAlloc} WHERE emp_id = ${empid}`;
+      }
       sql.query(alocQry, (err, allocations) => {
           if (err) {
               console.log("ProjectAllocation:: Err getting rows: ", err);

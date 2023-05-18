@@ -1,6 +1,7 @@
 const sql = require("../lib/db.js");
 const empProjUtili = "employee_project_utilization";
 const userACL = require('../lib/userACL.js');
+const APP_CONSTANTS = require('../lib/appConstants.js');
 
 const findAll = (req, res) => {
   if (!userACL.hasUtilizationReadAccess(req.user.role)) {
@@ -9,8 +10,15 @@ const findAll = (req, res) => {
   }
   let finalResult = [];
   try {
-      const utiliQry = `SELECT * FROM ${empProjUtili}`;
-
+      let utiliQry = '';
+      if(req.user.role == APP_CONSTANTS.USER_ROLES.PRODUCER) {
+        const producerClientId = req.user.client_id || null;
+        utiliQry = `SELECT * FROM ${empProjUtili}
+        join project_details on ${empProjUtili}.project_id = project_details.project_id
+        WHERE project_details.client_id = ${producerClientId}`
+      } else {
+        utiliQry = `SELECT * FROM ${empProjUtili}`;
+      }
       sql.query(utiliQry, (err, utilizations) => {
           if (err) {
               console.log("ProjectUtilization:: Err getting rows: ", err);

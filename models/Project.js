@@ -1,6 +1,7 @@
 const sql = require("../lib/db.js");
 const projectTable = "project_details";
 const userACL = require('../lib/userACL.js');
+const APP_CONSTANTS = require('../lib/appConstants.js');
 
 const findAll = (req, res) => {
   if (!userACL.hasProjectReadAccess(req.user.role)) {
@@ -8,10 +9,15 @@ const findAll = (req, res) => {
     return res.status(404).send({error: true, message: msg});
   }
   let finalResult = [];
-  let query =`SELECT * FROM ${projectTable}`;
-  if (req.query.first_name) {
-    query += ` WHERE first_name LIKE '%${req.query.first_name}%'`;
+  let query='';
+  if(req.user.role == APP_CONSTANTS.USER_ROLES.PRODUCER) {
+    const producerClientId = req.user.client_id || null;
+    query = `SELECT * FROM ${projectTable}
+    WHERE client_id = ${producerClientId}`;
+  } else {
+    query = `SELECT * FROM ${projectTable}`;
   }
+
   sql.query(query, (err, rows) => {
     if (err) {
       console.log("error: ", err);
@@ -43,9 +49,20 @@ const findById = (req, res) => {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
     return res.status(404).send({error: true, message: msg});
   }
+
   const projectDetailsId = req.params.project_id;
   if (projectDetailsId) {
-    const query = `SELECT * FROM ${projectTable} WHERE project_id = '${projectDetailsId}'`;
+    let query='';
+    if(req.user.role == APP_CONSTANTS.USER_ROLES.PRODUCER) {
+
+      const producerClientId = req.user.client_id || null;
+      query = `SELECT * FROM ${projectTable}
+      WHERE client_id = ${producerClientId}
+      AND project_id = '${projectDetailsId}'`;
+    } else {
+      query = `SELECT * FROM ${projectTable} WHERE project_id = '${projectDetailsId}'`;
+    }
+     
     sql.query(query, (err, rows) => {
       if (err) {
         console.log("error: ", err);

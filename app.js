@@ -13,6 +13,7 @@ const empPrjAlocRouter = require('./routes/projectAllocations');
 const empPrjUtiliRouter = require('./routes/projecUtilizations');
 const reportsRouter = require('./routes/reports');
 const clientsRouter = require('./routes/clients');
+const timesheetsRouter = require('./routes/timesheets');
 
 const cors = require('cors');
 const app = express();
@@ -44,6 +45,7 @@ app.use('/empPrjAloc', empPrjAlocRouter);
 app.use('/empPrjUtili', empPrjUtiliRouter);
 app.use('/reports', reportsRouter);
 app.use('/clients', clientsRouter);
+app.use('/timesheets',timesheetsRouter)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
