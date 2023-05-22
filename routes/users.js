@@ -14,5 +14,6 @@ router.post("/update/:user_id", verifyToken, User.update);
 router.get("/delete/:user_id", verifyToken, User.erase);
 router.post("/sign-in", User.signIn);
 router.post("/roles", verifyToken, User.getUserRoles);
+router.post("/resetPassword/:user_id", verifyToken, User.resetPassword);
 
 module.exports = router;

@@ -83,6 +83,7 @@ const create = (req, res) => {
          bcrypt.hash(newUser.password, saltRounds, (err, hash) => {
              if (err) throw new Error("Internal Server Error");
              newUser.password = hash;
+             newUser.needsPasswordReset = true;
              const insertQuery = `INSERT INTO ${usersTable} set ?`;
              sql.query(insertQuery, [newUser], (err, succeess) => {
                  if (err) {
@@ -149,6 +150,37 @@ const update = (req, res) => {
   });
 };
 
+const resetPassword = (req, res) => {
+  const { user_id } = req.params;
+  if(!user_id){
+    res.status(500).send('User ID is Required');
+  }
+  const updatedUser = req.body;
+  const updateQuery = `UPDATE ${usersTable} set ? WHERE user_id = ?`;
+  // Define salt rounds
+  const saltRounds = 9;
+  // Hash password
+  bcrypt.hash(updatedUser.password, saltRounds, (err, hash) => {
+      if (err) throw new Error("Internal Server Error");
+      updatedUser.password = hash;
+      sql.query(updateQuery,[updatedUser, user_id], (err, succeess) => {
+        if (err) {
+          console.log("error: ", err);
+          res.status(500).send(`Problem while Updating the ${usersTable} with ID: ${user_id}. ${err}`);
+        } else {
+          if (succeess.affectedRows == 1){
+            console.log(`${usersTable} UPDATED:` , succeess)
+            updatedUser.user_id = parseInt(user_id);
+            res.status(200).send(updatedUser);
+          } else {
+            res.status(404).send(`Record not found with User Details ID: ${user_id}`);
+          }
+        }
+      });
+  });
+
+};
+
 const erase = (req, res) => {
   const { user_id } = req.params;
   if(!user_id){
@@ -178,5 +210,6 @@ module.exports = {
   update,
   erase,
   signIn,
-  getUserRoles
+  getUserRoles,
+  resetPassword
 }
