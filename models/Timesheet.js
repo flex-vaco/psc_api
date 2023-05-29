@@ -45,6 +45,42 @@ const getTimesheets = (req, res) => {
   }
 };
 
+const getTimesheetsByAllocation = (req, res) => {
+  const activeUser = req.user;
+  const {givenDate, projectId, empId} = req.body;
+
+  if(!givenDate){
+    res.status(500).send('Date is Required to get timesheets');
+  }
+  
+  if (!userACL.hasTimesheetAccess(activeUser?.role, APP_CONSTANTS.ACCESS_LEVELS.READ)) {
+    const msg = `User role '${activeUser?.role}' does not have privileges on this action`;
+    return res.status(404).send({ error: true, message: msg });
+  }
+
+  const tsAlocQry = `SELECT timesheets.*, EPA.emp_proj_aloc_id, EPA.hours_per_day as allocation_hrs_per_day, project_details.project_name, project_details.project_location
+      FROM timesheets
+      JOIN employee_project_allocations EPA on EPA.project_id = timesheets.project_id
+      JOIN project_details on project_details.project_id = timesheets.project_id
+      WHERE timesheets.emp_id=${empId}
+      AND '${givenDate}' BETWEEN EPA.start_date and EPA.end_date
+      AND timesheet_date = '${givenDate}'
+      AND timesheets.project_id = ${projectId}`;
+
+  try {
+    sql.query(tsAlocQry, (err, rows) => {
+      if (err) {
+        console.log("ERRR", err)
+        return res.status(500).send(`Problem getting records. ${err}`);
+      }
+      return res.status(200).send({ timesheetsByAllocation: rows, user: req.user });
+    });
+  } catch (err) {
+    console.log("ProjectAllocation:: Error:", err);
+  }
+
+}
+
 const create = (req, res) => {
   const activeUser = req.user;
 
@@ -117,6 +153,43 @@ const update = (req, res) => {
   });
 };
 
+const changeStatus = (req, res) => {
+  const activeUser = req.user;
+
+  if (!userACL.hasTimesheetAccess(activeUser?.role, APP_CONSTANTS.ACCESS_LEVELS.UPDATE)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
+  const status = req.body.status;
+  if((activeUser?.role !== APP_CONSTANTS.USER_ROLES.SUPERVISOR) && (status === APP_CONSTANTS.TIMESHEET_STATUS.APPROVED)) {
+    const msg = `User role '${req.user.role}' can not Approve timesheets`;
+    return res.status(404).send({error: true, message: msg});
+  }
+  const empId = req.body.emp_id;
+  const supervisorEmail = req.body.supervisor_email;
+  const monthStartDate = req.body.month_start_date;
+  const monthEndDate = req.body.month_end_date;
+
+  const statusChangeQry = `UPDATE ${timesheets} SET timesheet_status = '${status}'
+      WHERE emp_id = ${empId}
+      AND supervisor_email = '${supervisorEmail}'
+      AND timesheet_date BETWEEN '${monthStartDate}' AND '${monthEndDate}'`;
+
+  sql.query(statusChangeQry, (err, succeess) => {
+    if (err) {
+      console.log("error: ", err);
+      res.status(500).send(`Problem while updating the ${timesheets}. ${err}`);
+    } else {
+      console.log("STS: ", succeess)
+      if (succeess.affectedRows >= 1){
+        console.log(`${timesheets} UPDATED:` , succeess)
+        res.status(200).send({msg: `${succeess.affectedRows} rows updated as ${status}`, user: req.user});
+      } else {
+        res.status(404).send(`Record not found`);
+      }
+    }
+  });
+};
 const erase = (req, res) => {
   const activeUser = req.user;
 
@@ -147,6 +220,8 @@ const erase = (req, res) => {
 
 module.exports = {
     getTimesheets,
+    getTimesheetsByAllocation,
+    changeStatus,
     create,
     update,
     erase

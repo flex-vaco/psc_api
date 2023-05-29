@@ -131,7 +131,7 @@ const findById = async (req, res) => {
 };
 
 const findByEmpId = (req, res) => {
-  const empid = req.query.empid;
+  const empId = req.query.emp_id;
   try {
       let alocQry =  '';
       if(req.user.role == APP_CONSTANTS.USER_ROLES.PRODUCER) {
@@ -139,9 +139,14 @@ const findByEmpId = (req, res) => {
         alocQry = `SELECT * FROM ${empProjAlloc}
         join project_details on ${empProjAlloc}.project_id = project_details.project_id
         WHERE project_details.client_id = ${producerClientId}
-        AND emp_id = '${empid}'`
+        AND emp_id = '${empId}'`
       } else {
-        alocQry = `SELECT * FROM ${empProjAlloc} WHERE emp_id = ${empid}`;
+        //alocQry = `SELECT * FROM ${empProjAlloc} WHERE emp_id = ${empId}`;
+        alocQry = `SELECT employee_project_allocations.*, project_name, project_location, supervisor_email
+          FROM ${empProjAlloc}
+          JOIN project_details on ${empProjAlloc}.project_id = project_details.project_id
+          JOIN employee_details on ${empProjAlloc}.emp_id = employee_details.emp_id
+          WHERE ${empProjAlloc}.emp_id = '${empId}'`;
       }
       sql.query(alocQry, (err, allocations) => {
           if (err) {

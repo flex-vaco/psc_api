@@ -1,11 +1,11 @@
-# ************************************************************
+/************************************************************
 # SQL Migrations
 # Version 202305101818
 #
 # Author: Rajender
 # Database: fract_db
 # Generation Time: 2023-05-10 18:18:36 +0530
-# ************************************************************
+# ************************************************************/
 
 DROP TABLE IF EXISTS `statuses`;
 
@@ -40,12 +40,12 @@ CREATE TABLE `timesheets` (
   `timesheet_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `emp_id` int(10) unsigned NOT NULL,
   `project_id` int(10) unsigned NOT NULL,
-  `supervisor_id` int(10) unsigned NOT NULL,
+  `supervisor_email` varchar(100) DEFAULT NULL,
   `timesheet_date` date NOT NULL,
   `hours_per_day` float(5,2) unsigned NOT NULL,
   `timesheet_status` varchar(20) NOT NULL,
-  `task` varchar(20) NOT NULL,
-  `comments` JSON DEFAULT NULL,
+  `task` varchar(250) NOT NULL DEFAULT '',
+  `comments` json DEFAULT NULL,
   `created_by` int(11) unsigned NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` int(11) unsigned NOT NULL,
@@ -53,14 +53,14 @@ CREATE TABLE `timesheets` (
   PRIMARY KEY (`timesheet_id`),
   KEY `emp_id` (`emp_id`),
   KEY `project_id` (`project_id`),
-  KEY `supervisor_id` (`supervisor_id`),
   KEY `timesheet_status` (`timesheet_status`),
+  KEY `timesheets_fk_5` (`created_by`),
+  KEY `timesheets_fk_6` (`updated_by`),
   CONSTRAINT `timesheets_fk_1` FOREIGN KEY (`emp_id`) REFERENCES `employee_details` (`emp_id`),
   CONSTRAINT `timesheets_fk_2` FOREIGN KEY (`project_id`) REFERENCES `project_details` (`project_id`),
-  CONSTRAINT `timesheets_fk_3` FOREIGN KEY (`supervisor_id`) REFERENCES `employee_details` (`emp_id`),
-  CONSTRAINT `timesheets_fk_4` FOREIGN KEY (`timesheet_status`) REFERENCES `statuses` (`status_name`),
-  CONSTRAINT `timesheets_fk_5` FOREIGN KEY (`created_by`) REFERENCES `users` (`user_id`),
-  CONSTRAINT `timesheets_fk_6` FOREIGN KEY (`updated_by`) REFERENCES `users` (`user_id`)
+  CONSTRAINT `timesheets_fk_3` FOREIGN KEY (`timesheet_status`) REFERENCES `statuses` (`status_name`),
+  CONSTRAINT `timesheets_fk_4` FOREIGN KEY (`created_by`) REFERENCES `users` (`user_id`),
+  CONSTRAINT `timesheets_fk_5` FOREIGN KEY (`updated_by`) REFERENCES `users` (`user_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;
 
 ALTER TABLE `users`

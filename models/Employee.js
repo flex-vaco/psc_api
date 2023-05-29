@@ -10,10 +10,11 @@ const findAll = (req, res) => { // filters by name if params are given
     return res.status(404).send({error: true, message: msg});
   }
 
-  const empName = req.params.emp_name;
+  const supervisorEmail = req.query?.supervisor_email;
+ 
   let query =`SELECT * FROM ${empTable}`;
-  if (req.query.empName) {
-    query += ` WHERE first_name LIKE '%${empName}%' OR last_name LIKE '%${empName}%'`;
+  if (supervisorEmail) {
+    query += ` WHERE supervisor_email = '${supervisorEmail}'`;
   }
   sql.query(query, (err, rows) => {
     if (err) {

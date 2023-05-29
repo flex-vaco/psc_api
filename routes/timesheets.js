@@ -11,5 +11,7 @@ router.post("/create", verifyToken, Timesheet.create);
 router.post("/update", verifyToken, Timesheet.update);
 router.get("/delete/:timesheet_id", verifyToken, Timesheet.erase);
 router.get("/", verifyToken, Timesheet.getTimesheets);
+router.post("/by_allocation", verifyToken, Timesheet.getTimesheetsByAllocation);
+router.post("/change_status", verifyToken, Timesheet.changeStatus);
 
 module.exports = router;
