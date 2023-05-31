@@ -234,7 +234,7 @@ const erase = (req, res) => {
 };
 
 const findEmpByProjectId = async (req, res) => {
-  if (!userACL.hasUtilizationCreateAccess(req.user.role)) {
+  if (!userACL.hasAllocationReadAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
     return res.status(404).send({error: true, message: msg});
   }

@@ -13,5 +13,8 @@ router.get("/delete/:timesheet_id", verifyToken, Timesheet.erase);
 router.get("/", verifyToken, Timesheet.getTimesheets);
 router.post("/by_allocation", verifyToken, Timesheet.getTimesheetsByAllocation);
 router.post("/change_status", verifyToken, Timesheet.changeStatus);
+router.get("/approvependingemployees", verifyToken, Timesheet.approvePendingEmployees);
+router.post("/empPendingTimesheet", verifyToken, Timesheet.findByPendingEmployeeTimesheet);
+router.post("/change_status_supervisior", verifyToken, Timesheet.changeStatusSupervisior);
 
 module.exports = router;
