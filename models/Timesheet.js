@@ -173,11 +173,15 @@ const changeStatus = (req, res) => {
   const startDate = req.body.start_date;
   const endDate = req.body.end_date;
 
-  const statusChangeQry = `UPDATE ${timesheets} SET timesheet_status = '${status}'
+  let statusChangeQry = `UPDATE ${timesheets} SET timesheet_status = '${status}'
       WHERE emp_id = ${empId}
       AND supervisor_email = '${supervisorEmail}'
       AND timesheet_date BETWEEN '${startDate}' AND '${endDate}'`;
 
+  if(activeUser?.role === APP_CONSTANTS.USER_ROLES.EMPLOYEE) {
+    statusChangeQry += ` AND timesheet_status NOT IN ('APPROVED','ACCEPTED')`;
+  }
+    
   sql.query(statusChangeQry, (err, succeess) => {
     if (err) {
       console.log("error: ", err);
