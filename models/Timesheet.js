@@ -180,6 +180,8 @@ const changeStatus = (req, res) => {
 
   if(activeUser?.role === APP_CONSTANTS.USER_ROLES.EMPLOYEE) {
     statusChangeQry += ` AND timesheet_status NOT IN ('APPROVED','ACCEPTED')`;
+  } else if(activeUser?.role === APP_CONSTANTS.USER_ROLES.SUPERVISOR) {
+    statusChangeQry += ` AND timesheet_status != 'ACCEPTED'`;
   }
     
   sql.query(statusChangeQry, (err, succeess) => {
