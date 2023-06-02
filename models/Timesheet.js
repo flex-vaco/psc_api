@@ -172,11 +172,16 @@ const changeStatus = (req, res) => {
   const supervisorEmail = req.body.supervisor_email;
   const startDate = req.body.start_date;
   const endDate = req.body.end_date;
+  const projectId = req.body.project_id;
 
   let statusChangeQry = `UPDATE ${timesheets} SET timesheet_status = '${status}'
       WHERE emp_id = ${empId}
       AND supervisor_email = '${supervisorEmail}'
       AND timesheet_date BETWEEN '${startDate}' AND '${endDate}'`;
+  
+  if (projectId) {
+    statusChangeQry += ` AND project_id = ${projectId}`;
+  }
 
   if(activeUser?.role === APP_CONSTANTS.USER_ROLES.EMPLOYEE) {
     statusChangeQry += ` AND timesheet_status NOT IN ('APPROVED','ACCEPTED')`;
@@ -192,9 +197,9 @@ const changeStatus = (req, res) => {
       console.log("STS: ", succeess)
       if (succeess.affectedRows >= 1){
         console.log(`${timesheets} UPDATED:` , succeess)
-        res.status(200).send({msg: `${succeess.affectedRows} rows updated as ${status}`, user: req.user});
+        res.status(200).send({message: `${succeess.affectedRows} rows updated as ${status}`, user: req.user});
       } else {
-        res.status(404).send(`Record not found`);
+        res.status(404).send({message: `No Records to update, to status: ${status}`});
       }
     }
   });

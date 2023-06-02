@@ -10,3 +10,7 @@
 ALTER TABLE `timesheets`
 	ADD COLUMN `overtime` float(5,2) UNSIGNED DEFAULT 0
 	AFTER hours_per_day;
+
+ALTER TABLE `timesheets`
+	ADD COLUMN `bench_hours` float(5,2) UNSIGNED DEFAULT 0 AFTER overtime,
+	ADD COLUMN `time_off` float(5,2) UNSIGNED DEFAULT 0 AFTER bench_hours;
