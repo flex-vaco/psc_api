@@ -141,8 +141,7 @@ const findByEmpId = (req, res) => {
         WHERE project_details.client_id = ${producerClientId}
         AND emp_id = '${empId}'`
       } else {
-        //alocQry = `SELECT * FROM ${empProjAlloc} WHERE emp_id = ${empId}`;
-        alocQry = `SELECT employee_project_allocations.*, project_name, project_location, supervisor_email
+        alocQry = `SELECT employee_project_allocations.*, project_name, project_location, manager_email
           FROM ${empProjAlloc}
           JOIN project_details on ${empProjAlloc}.project_id = project_details.project_id
           JOIN employee_details on ${empProjAlloc}.emp_id = employee_details.emp_id

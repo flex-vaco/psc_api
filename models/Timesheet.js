@@ -22,8 +22,8 @@ const getTimesheets = (req, res) => {
     case APP_CONSTANTS.USER_ROLES.ADMINISTRATOR:
       tsQry = tsQry;
       break;
-    case APP_CONSTANTS.USER_ROLES.SUPERVISOR:
-      tsQry = tsQry + `AND supervisor_email = ${activeUser?.email}`;
+    case APP_CONSTANTS.USER_ROLES.MANAGER:
+      tsQry = tsQry + `AND manager_email = ${activeUser?.email}`;
       break;
     case APP_CONSTANTS.USER_ROLES.EMPLOYEE:
       tsQry = tsQry + `AND emp_id = ${activeUser?.emp_id}`;
@@ -164,19 +164,19 @@ const changeStatus = (req, res) => {
     return res.status(404).send({error: true, message: msg});
   }
   const status = req.body.status;
-  if((activeUser?.role !== APP_CONSTANTS.USER_ROLES.SUPERVISOR) && (status === APP_CONSTANTS.TIMESHEET_STATUS.APPROVED)) {
+  if((activeUser?.role !== APP_CONSTANTS.USER_ROLES.MANAGER) && (status === APP_CONSTANTS.TIMESHEET_STATUS.APPROVED)) {
     const msg = `User role '${req.user.role}' can not Approve timesheets`;
     return res.status(404).send({error: true, message: msg});
   }
   const empId = req.body.emp_id;
-  const supervisorEmail = req.body.supervisor_email;
+  const managerEmail = req.body.manager_email;
   const startDate = req.body.start_date;
   const endDate = req.body.end_date;
   const projectId = req.body.project_id;
 
   let statusChangeQry = `UPDATE ${timesheets} SET timesheet_status = '${status}'
       WHERE emp_id = ${empId}
-      AND supervisor_email = '${supervisorEmail}'
+      AND manager_email = '${managerEmail}'
       AND timesheet_date BETWEEN '${startDate}' AND '${endDate}'`;
   
   if (projectId) {
@@ -185,7 +185,7 @@ const changeStatus = (req, res) => {
 
   if(activeUser?.role === APP_CONSTANTS.USER_ROLES.EMPLOYEE) {
     statusChangeQry += ` AND timesheet_status NOT IN ('APPROVED','ACCEPTED')`;
-  } else if(activeUser?.role === APP_CONSTANTS.USER_ROLES.SUPERVISOR) {
+  } else if(activeUser?.role === APP_CONSTANTS.USER_ROLES.MANAGER) {
     statusChangeQry += ` AND timesheet_status != 'ACCEPTED'`;
   }
     
@@ -240,21 +240,21 @@ const approvePendingEmployees = (req, res) => { // filters by name if params are
     return res.status(404).send({error: true, message: msg});
   }
 
-  if((req.user.role !== APP_CONSTANTS.USER_ROLES.SUPERVISOR) && (activeUser?.role !== APP_CONSTANTS.USER_ROLES.PRODUCER)) {
+  if((req.user.role !== APP_CONSTANTS.USER_ROLES.MANAGER) && (activeUser?.role !== APP_CONSTANTS.USER_ROLES.PRODUCER)) {
     const msg = `User role '${req.user.role}' can not Approve timesheets`;
     return res.status(404).send({error: true, message: msg});
   }
   let query='';
-  if(req.user.role == APP_CONSTANTS.USER_ROLES.SUPERVISOR) {
-      const supervisorEmail = req.user.email;
+  if(req.user.role == APP_CONSTANTS.USER_ROLES.MANAGER) {
+      const managerEmail = req.user.email;
 
       query =`SELECT distinct ${timesheets}.emp_id, ${timesheets}.project_id, ${empTable}.first_name, ${empTable}.last_name, ${projectTable}.project_name FROM ${timesheets}`;
 
       query += ` JOIN ${empTable} on ${empTable}.emp_id = ${timesheets}.emp_id`;
       query += ` JOIN ${projectTable} on ${projectTable}.project_id = ${timesheets}.project_id`;
 
-      if (supervisorEmail) {
-        query += ` WHERE ${empTable}.supervisor_email = '${supervisorEmail}' and ${timesheets}.timesheet_status = 'SUBMITTED'`;
+      if (managerEmail) {
+        query += ` WHERE ${empTable}.manager_email = '${managerEmail}' and ${timesheets}.timesheet_status = 'SUBMITTED'`;
       }
       
   }
@@ -291,7 +291,7 @@ const findByPendingEmployeeTimesheet = (req, res) => {
     return res.status(404).send({error: true, message: msg});
   }
 
-  if((req.user.role !== APP_CONSTANTS.USER_ROLES.SUPERVISOR) && (activeUser?.role !== APP_CONSTANTS.USER_ROLES.PRODUCER)) {
+  if((req.user.role !== APP_CONSTANTS.USER_ROLES.MANAGER) && (activeUser?.role !== APP_CONSTANTS.USER_ROLES.PRODUCER)) {
     const msg = `User role '${req.user.role}' can not Approve timesheets`;
     return res.status(404).send({error: true, message: msg});
   }
@@ -301,7 +301,7 @@ const findByPendingEmployeeTimesheet = (req, res) => {
   query += ` JOIN ${projectTable} on ${projectTable}.project_id = ${timesheets}.project_id`;
   query += ` where ${timesheets}.emp_id = '${empId}' and ${timesheets}.project_id = '${projectId}'`;
 
-  if(req.user.role == APP_CONSTANTS.USER_ROLES.SUPERVISOR) {
+  if(req.user.role == APP_CONSTANTS.USER_ROLES.MANAGER) {
     query += ` and ${timesheets}.timesheet_status = 'SUBMITTED'`;
   }
 
@@ -320,7 +320,7 @@ const findByPendingEmployeeTimesheet = (req, res) => {
 const changeStatusSupervisior = (req, res) => { 
   const activeUser = req.user;
   
-  if((req.user.role !== APP_CONSTANTS.USER_ROLES.SUPERVISOR) && (activeUser?.role !== APP_CONSTANTS.USER_ROLES.PRODUCER)) {
+  if((req.user.role !== APP_CONSTANTS.USER_ROLES.MANAGER) && (activeUser?.role !== APP_CONSTANTS.USER_ROLES.PRODUCER)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
     return res.status(404).send({error: true, message: msg});
   }
@@ -329,7 +329,7 @@ const changeStatusSupervisior = (req, res) => {
   const empId = req.body.emp_id;
   const projectId = req.body.project_id;
   let timesheetStatus ='';
-  if(req.user.role == APP_CONSTANTS.USER_ROLES.SUPERVISOR) {
+  if(req.user.role == APP_CONSTANTS.USER_ROLES.MANAGER) {
     timesheetStatus = 'SUBMITTED';
   }
 
