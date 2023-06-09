@@ -36,10 +36,10 @@ const findAll = (req, res) => {
     try {
          let alocQry = '';
          if(req.user.role == APP_CONSTANTS.USER_ROLES.PRODUCER) {
-           const producerClientId = req.user.client_id || null;
+           const producerClientIds = `SELECT client_id from producer_clients WHERE producer_id = ${req.user.user_id}`;
            alocQry = `SELECT * FROM ${empProjAlloc}
            join project_details on ${empProjAlloc}.project_id = project_details.project_id
-           WHERE project_details.client_id = ${producerClientId}`
+           WHERE project_details.client_id IN (${producerClientIds})`
          } else {
            alocQry = `SELECT * FROM ${empProjAlloc}`;
          }
@@ -90,10 +90,10 @@ const findById = async (req, res) => {
     if (empProjAllocID) {
         let query = ""; 
         if(req.user.role == APP_CONSTANTS.USER_ROLES.PRODUCER) {
-          const producerClientId = req.user.client_id || null;
+          const producerClientIds = `SELECT client_id from producer_clients WHERE producer_id = ${req.user.user_id}`;
           query = `SELECT * FROM ${empProjAlloc}
           join project_details on ${empProjAlloc}.project_id = project_details.project_id
-          WHERE project_details.client_id = ${producerClientId}
+          WHERE project_details.client_id IN (${producerClientIds})
           AND emp_proj_aloc_id = '${empProjAllocID}'`
         } else {
           query = `SELECT * FROM ${empProjAlloc} WHERE emp_proj_aloc_id = '${empProjAllocID}'`;
@@ -120,7 +120,6 @@ const findById = async (req, res) => {
                         console.log("Project rows in func", prjRows[0]);
                         result.projectDetails = prjRows[0]
                     }
-                    // console.log("empProjAlloc: ", rows);
                     return res.status(200).send({ empProjAlloc: result, user: req.user });
                 })
             }
@@ -135,10 +134,10 @@ const findByEmpId = (req, res) => {
   try {
       let alocQry =  '';
       if(req.user.role == APP_CONSTANTS.USER_ROLES.PRODUCER) {
-        const producerClientId = req.user.client_id || null;
+        const producerClientIds = `SELECT client_id from producer_clients WHERE producer_id = ${req.user.user_id}`;
         alocQry = `SELECT * FROM ${empProjAlloc}
         join project_details on ${empProjAlloc}.project_id = project_details.project_id
-        WHERE project_details.client_id = ${producerClientId}
+        WHERE project_details.client_id IN (${producerClientIds})
         AND emp_id = '${empId}'`
       } else {
         alocQry = `SELECT employee_project_allocations.*, project_name, project_location, manager_email

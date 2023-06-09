@@ -11,9 +11,9 @@ const findAll = (req, res) => {
   let finalResult = [];
   let query='';
   if(req.user.role == APP_CONSTANTS.USER_ROLES.PRODUCER) {
-    const producerClientId = req.user.client_id || null;
+    const producerClientIds = `SELECT client_id from producer_clients WHERE producer_id = ${req.user.user_id}`;
     query = `SELECT * FROM ${projectTable}
-    WHERE client_id = ${producerClientId}`;
+    WHERE client_id IN (${producerClientIds})`;
   } else {
     query = `SELECT * FROM ${projectTable}`;
   }
@@ -54,10 +54,9 @@ const findById = (req, res) => {
   if (projectDetailsId) {
     let query='';
     if(req.user.role == APP_CONSTANTS.USER_ROLES.PRODUCER) {
-
-      const producerClientId = req.user.client_id || null;
+      const producerClientIds = `SELECT client_id from producer_clients WHERE producer_id = ${req.user.user_id}`;
       query = `SELECT * FROM ${projectTable}
-      WHERE client_id = ${producerClientId}
+      WHERE client_id IN (${producerClientIds})
       AND project_id = '${projectDetailsId}'`;
     } else {
       query = `SELECT * FROM ${projectTable} WHERE project_id = '${projectDetailsId}'`;
@@ -68,7 +67,6 @@ const findById = (req, res) => {
         console.log("error: ", err);
         return res.status(500).send(`There was a problem finding the Project. ${err}`);
       }
-      // console.log("projects: ", rows);
       return res.status(200).send({projects: rows, user: req.user});
     });
   } else {

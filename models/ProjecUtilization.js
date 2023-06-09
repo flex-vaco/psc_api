@@ -12,10 +12,10 @@ const findAll = (req, res) => {
   try {
       let utiliQry = '';
       if(req.user.role == APP_CONSTANTS.USER_ROLES.PRODUCER) {
-        const producerClientId = req.user.client_id || null;
+        const producerClientIds = `SELECT client_id from producer_clients WHERE producer_id = ${req.user.user_id}`;
         utiliQry = `SELECT * FROM ${empProjUtili}
         join project_details on ${empProjUtili}.project_id = project_details.project_id
-        WHERE project_details.client_id = ${producerClientId}`
+        WHERE project_details.client_id IN (${producerClientIds})`
       } else {
         utiliQry = `SELECT * FROM ${empProjUtili}`;
       }

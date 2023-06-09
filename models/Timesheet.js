@@ -28,9 +28,6 @@ const getTimesheets = (req, res) => {
     case APP_CONSTANTS.USER_ROLES.EMPLOYEE:
       tsQry = tsQry + `AND emp_id = ${activeUser?.emp_id}`;
       break;
-    case APP_CONSTANTS.USER_ROLES.PRODUCER:
-      tsQry = tsQry + `AND project_id = ${activeUser?.project_id}`;
-      break;
     default:
       return res.status(404).send({ error: true, message: `User with role: ${activeUser?.role} not authorized to get timesheets.` });
   }
@@ -221,7 +218,6 @@ const erase = (req, res) => {
       console.log("error: ", err);
       res.status(500).send(`Problem while Deleting the ${timesheets} with ID: ${timesheet_id}. ${err}`);
     } else {
-      //console.log("DEL: ", succeess)
       if (succeess.affectedRows == 1){
         console.log(`${timesheets} DELETED:` , succeess)
         res.status(200).send({msg: `Deleted row from ${timesheets} with ID: ${timesheet_id}`, user: req.user});
@@ -260,15 +256,12 @@ const approvePendingEmployees = (req, res) => { // filters by name if params are
   }
   
   if(req.user.role == APP_CONSTANTS.USER_ROLES.PRODUCER) {
-    const clientId = req.user.client_id;
+    const producerClientIds = `SELECT client_id from producer_clients WHERE producer_id = ${req.user.user_id}`;
     query =`SELECT distinct ${timesheets}.emp_id, ${timesheets}.project_id, ${empTable}.first_name, ${empTable}.last_name, ${projectTable}.project_name FROM ${timesheets}`;
 
     query += ` JOIN ${empTable} on ${empTable}.emp_id = ${timesheets}.emp_id`;
     query += ` JOIN ${projectTable} on ${projectTable}.project_id = ${timesheets}.project_id`;
-    
-    if (clientId) {
-      query += ` WHERE ${timesheets}.timesheet_status = 'APPROVED' and ${projectTable}.client_id = ${clientId}`;
-    }
+    query += ` WHERE ${timesheets}.timesheet_status = 'APPROVED' and ${projectTable}.client_id IN (${producerClientIds})`;
     console.log(query);
   }
   console.log(query);
