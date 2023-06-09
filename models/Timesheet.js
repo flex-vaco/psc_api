@@ -328,6 +328,8 @@ const changeStatusSupervisior = (req, res) => {
  
   const empId = req.body.emp_id;
   const projectId = req.body.project_id;
+  const timesheetId = req.body.timesheet_id;
+  
   let timesheetStatus ='';
   if(req.user.role == APP_CONSTANTS.USER_ROLES.MANAGER) {
     timesheetStatus = 'SUBMITTED';
@@ -340,7 +342,7 @@ const changeStatusSupervisior = (req, res) => {
   const statusChangeQry = `UPDATE ${timesheets} SET timesheet_status = '${status}'
       WHERE emp_id = ${empId}
       AND project_id = ${projectId}
-      AND timesheet_status = '${timesheetStatus}'`;
+      AND timesheet_status = '${timesheetStatus}' AND timesheet_id IN (${timesheetId});`;
 
   sql.query(statusChangeQry, (err, succeess) => {
     if (err) {
