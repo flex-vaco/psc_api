@@ -98,8 +98,8 @@ const create = (req, res) => {
             newUser.client_ids.forEach(cl_id => {
               producerClients.push(cl_id);
             });
-            delete newUser.client_ids;
           }
+          delete newUser.client_ids;
          // Define salt rounds
          const saltRounds = 9;
          // Hash password
