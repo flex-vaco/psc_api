@@ -1,6 +1,7 @@
 const sql = require("../lib/db.js");
 const categoryTable = "categories";
 const empTable = "employee_details";
+const APP_EMAIL = require("../lib/email.js");
 
 const getCategories = (req, res) => {
   let query =`SELECT * FROM ${categoryTable}`;
@@ -50,7 +51,26 @@ const getTechnologies = (req, res) => {
 });
 };
 
+const sendEmail = (req, res) => {
+  const {to, subject, text } = req.body || {to: 'rvanamala@vaco.com', subject: 'Test Subject', text: 'Some Random Text'};
+  const mailData = {
+      from: APP_EMAIL.MAIL_ID,
+      to: to,
+      subject: subject,
+      text: text,
+      html: '<b>Hey there! </b><br> This is our first message sent with Nodemailer<br/>',
+  };
+
+  APP_EMAIL.transporter.sendMail(mailData, (error, info) => {
+      if (error) {
+          return console.log(error);
+      }
+      res.status(200).send({ message: "Mail send", message_id: info.messageId });
+  });
+}
+
 module.exports = {
     getCategories,
-    getTechnologies
+    getTechnologies,
+    sendEmail
 }

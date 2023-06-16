@@ -9,5 +9,6 @@ router.use(bodyParser.urlencoded({ extended: true }));
 
 router.get("/getCategories", verifyToken, Application.getCategories);
 router.get("/getTechnologies", verifyToken, Application.getTechnologies);
+router.post("/sendEmail", verifyToken, Application.sendEmail);
 
 module.exports = router;
