@@ -99,7 +99,7 @@ const create = (req, res) => {
               producerClients.push(cl_id);
             });
           }
-          delete newUser.client_ids;
+          if (newUser.client_ids) delete newUser.client_ids;
          // Define salt rounds
          const saltRounds = 9;
          // Hash password
@@ -184,7 +184,7 @@ const update = (req, res) => {
       producerClients.push(cl_id);
     });
   }
-  delete updatedUser.client_ids;
+  if (updatedUser.client_ids) delete updatedUser.client_ids;
 
   const updateQuery = `UPDATE ${usersTable} set ? WHERE user_id = ?`;
   sql.query(updateQuery,[updatedUser, user_id], (err, succeess) => {

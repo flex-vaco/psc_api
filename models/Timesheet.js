@@ -353,6 +353,41 @@ const changeStatusSupervisior = (req, res) => {
   });
 }
 
+const getTimesheetForExport = (req, res) => { 
+  const activeUser = req.user;
+  const empId = req.body.emp_id;
+  const projectId = req.body.project_id;
+  const startDate = req.body.start_date;
+  const endDate = req.body.end_date;
+
+  if (!userACL.hasTimesheetAccess(activeUser?.role, APP_CONSTANTS.ACCESS_LEVELS.READ)) {
+    const msg = `User role '${activeUser?.role}' does not have privileges on this action`;
+    return res.status(404).send({ error: true, message: msg });
+  }
+  let tsQry = `SELECT DATE_FORMAT(timesheet_date, "%W, %e %b %Y") AS DATE, project_name AS PROJECT, task AS TASK, hours_per_day AS PROJECT_HOURS, 
+                overtime AS OVERTIME, bench_hours AS BENCH, time_off AS PTO, timesheet_status AS STATUS FROM timesheets 
+                JOIN employee_details ON timesheets.emp_id = employee_details.emp_id
+                JOIN project_details ON timesheets.project_id = project_details.project_id
+                WHERE timesheets.emp_id=${empId}`;
+
+  if (projectId) {
+    tsQry += ` AND timesheets.project_id=${projectId}`
+  }
+  tsQry += ` AND timesheet_date BETWEEN '${startDate}' AND '${endDate}' ORDER BY timesheet_date`;
+
+  try {
+    sql.query(tsQry, (err, rows) => {
+      if (err) {
+        console.log("ERRR", err)
+        return res.status(500).send(`Problem getting Timesheet records. ${err}`);
+      }
+      return res.status(200).send({ timesheets: rows, user: req.user });
+    });
+  } catch (err) {
+    console.log("Timesheet:: Error:", err);
+  }
+}
+
 module.exports = {
     getTimesheets,
     getTimesheetsByAllocation,
@@ -362,5 +397,6 @@ module.exports = {
     erase,
     approvePendingEmployees,
     findByPendingEmployeeTimesheet,
-    changeStatusSupervisior
+    changeStatusSupervisior,
+    getTimesheetForExport
 }

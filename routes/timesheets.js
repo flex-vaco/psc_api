@@ -16,5 +16,6 @@ router.post("/change_status", verifyToken, Timesheet.changeStatus);
 router.get("/approvependingemployees", verifyToken, Timesheet.approvePendingEmployees);
 router.post("/empPendingTimesheet", verifyToken, Timesheet.findByPendingEmployeeTimesheet);
 router.post("/change_status_supervisior", verifyToken, Timesheet.changeStatusSupervisior);
+router.post("/for_export", verifyToken, Timesheet.getTimesheetForExport);
 
 module.exports = router;
