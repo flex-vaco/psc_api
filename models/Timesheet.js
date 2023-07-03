@@ -81,6 +81,41 @@ const getTimesheetsByAllocation = (req, res) => {
 
 }
 
+const getEntriesByDates = (req, res) => {
+  const activeUser = req.user;
+  const {startDate, endDate, empId} = req.body;
+
+  if(!startDate || !endDate){
+    res.status(500).send('Dates are Required to get timesheets');
+  }
+  
+  if (!userACL.hasTimesheetAccess(activeUser?.role, APP_CONSTANTS.ACCESS_LEVELS.READ)) {
+    const msg = `User role '${activeUser?.role}' does not have privileges on this action`;
+    return res.status(404).send({ error: true, message: msg });
+  }
+
+  const tsAlocQry = `SELECT t.*, prj.project_name, prj.project_location, epa.emp_proj_aloc_id, epa.hours_per_day as allocation_hrs_per_day 
+      FROM fract_db.timesheets t
+      inner join project_details prj on prj.project_id = t.project_id
+      inner join employee_project_allocations epa on epa.project_id = prj.project_id and epa.emp_id = t.emp_id
+      where t.emp_id = ${empId} and
+      t.timesheet_date between '${startDate}' and '${endDate}'
+      order by t.timesheet_date`;
+  
+   try {
+    sql.query(tsAlocQry, (err, rows) => {
+      if (err) {
+        console.log("ERRR", err)
+        return res.status(500).send(`Problem getting records. ${err}`);
+      }
+      return res.status(200).send({ timesheetsByAllocation: rows, user: req.user });
+    });
+  } catch (err) {
+    console.log("Timesheet data:: Error:", err);
+  }
+
+}
+
 const create = (req, res) => {
   const activeUser = req.user;
 
@@ -391,6 +426,7 @@ const getTimesheetForExport = (req, res) => {
 module.exports = {
     getTimesheets,
     getTimesheetsByAllocation,
+    getEntriesByDates,
     changeStatus,
     create,
     update,

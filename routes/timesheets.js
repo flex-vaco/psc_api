@@ -12,6 +12,7 @@ router.post("/update", verifyToken, Timesheet.update);
 router.get("/delete/:timesheet_id", verifyToken, Timesheet.erase);
 router.get("/", verifyToken, Timesheet.getTimesheets);
 router.post("/by_allocation", verifyToken, Timesheet.getTimesheetsByAllocation);
+router.post("/entries_by_dates", verifyToken, Timesheet.getEntriesByDates);
 router.post("/change_status", verifyToken, Timesheet.changeStatus);
 router.get("/approvependingemployees", verifyToken, Timesheet.approvePendingEmployees);
 router.post("/empPendingTimesheet", verifyToken, Timesheet.findByPendingEmployeeTimesheet);
