@@ -1,5 +1,7 @@
 const sql = require("../lib/db.js");
+const ai = require("../lib/ai.js");
 const categoryTable = "categories";
+const queryTable = "user_queries";
 const empTable = "employee_details";
 const APP_EMAIL = require("../lib/email.js");
 
@@ -69,8 +71,85 @@ const sendEmail = (req, res) => {
   });
 }
 
+const getChatResp =  (req, res) => {
+      const message = req.query.chatMessage;
+       
+        ai.getAIGeneratedQuery(message).then((query) => {
+          console.log(query);
+          sql.query(query, (err, rows) => {
+            if (err) {
+              console.log("error: ", err);
+              return res.status(500).send(`There was a problem getting query. ${err}`);
+            }
+            console.log(rows);
+            return res.status(200).send({query:query, records:rows});
+          });
+        //return res.status(200).send(result);
+      })
+}
+
+const runUserQuery = (req, res) => {
+  const query = req.query.query;
+
+  try {
+      sql.query(query, (err, rows) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(500).send(`There was a problem in executing the query. ${err}`);
+      }
+        return res.status(200).send({records: rows});
+      });
+  }
+  catch(err) {
+    return res.status(500).send(`There was a problem in executing the query. ${err}`);
+  }
+};
+
+const getUserQueries = (req, res) => {
+  const activeUser = req.user; 
+  const query = `SELECT * FROM ${queryTable} WHERE user_id = ${activeUser?.user_id}`;
+
+  sql.query(query, (err, rows) => {
+    if (err) {
+      console.log("error: ", err);
+      return res.status(500).send(`There was a problem in executing the query. ${err}`);
+    }
+   
+    return res.status(200).send({records: rows});
+    
+});
+};
+
+const saveUserQuery = (req, res) => {
+  const activeUser = req.user; 
+  let userQuery = req.body;
+  userQuery.user_id = activeUser?.user_id;
+
+  const insertQuery = `INSERT INTO ${queryTable} set ?`;
+
+  try {
+    sql.query(insertQuery, [userQuery] ,(err, rows) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(500).send(`There was a problem in inserting the User Query. ${err}`);
+      }
+    
+      return res.status(200).send({records: rows});
+      
+    });
+  }
+  catch(err) {
+      return res.status(500).send(`There was a problem in inserting the User Query. ${err}`);
+  }
+};
+
+
 module.exports = {
     getCategories,
     getTechnologies,
-    sendEmail
+    sendEmail,
+    getChatResp,
+    runUserQuery,
+    saveUserQuery,
+    getUserQueries
 }

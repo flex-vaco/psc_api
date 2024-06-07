@@ -10,5 +10,10 @@ router.use(bodyParser.urlencoded({ extended: true }));
 router.get("/getCategories", verifyToken, Application.getCategories);
 router.get("/getTechnologies", verifyToken, Application.getTechnologies);
 router.post("/sendEmail", verifyToken, Application.sendEmail);
+router.get("/getChatResp", verifyToken, Application.getChatResp);
+router.get("/runUserQuery", verifyToken, Application.runUserQuery);
+router.post("/saveUserQuery", verifyToken, Application.saveUserQuery);
+router.get("/getUserQueries", verifyToken, Application.getUserQueries);
+
 
 module.exports = router;
