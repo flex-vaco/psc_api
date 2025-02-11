@@ -39,9 +39,9 @@ const findAll = (req, res) => {
            const producerClientIds = `SELECT client_id from producer_clients WHERE producer_id = ${req.user.user_id}`;
            alocQry = `SELECT * FROM ${empProjAlloc}
            join project_details on ${empProjAlloc}.project_id = project_details.project_id
-           WHERE project_details.client_id IN (${producerClientIds})`
+           WHERE project_details.client_id IN (${producerClientIds}) order by emp_proj_aloc_id desc`;
          } else {
-           alocQry = `SELECT * FROM ${empProjAlloc}`;
+           alocQry = `SELECT * FROM ${empProjAlloc} order by emp_proj_aloc_id desc`;
          }
         sql.query(alocQry, (err, allocations) => {
             if (err) {
