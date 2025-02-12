@@ -1,0 +1,1 @@
+ALTER TABLE `employee_details` CHANGE `designation` `designation` VARCHAR(100) NOT NULL;
