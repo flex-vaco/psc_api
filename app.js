@@ -15,7 +15,7 @@ const reportsRouter = require('./routes/reports');
 const clientsRouter = require('./routes/clients');
 const timesheetsRouter = require('./routes/timesheets');
 const hiringsRouter = require('./routes/hirings');
-
+const categoriesRouter = require('./routes/categories');
 const cors = require('cors');
 const app = express();
 
@@ -29,7 +29,12 @@ app.use(function(req, res, next) {
     next();
 });    
 
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3000', // React frontend URL
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
+  allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
+  credentials: true, // Allow credentials (cookies, authorization headers)
+}));
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -48,6 +53,7 @@ app.use('/reports', reportsRouter);
 app.use('/clients', clientsRouter);
 app.use('/timesheets', timesheetsRouter);
 app.use('/hirings', hiringsRouter);
+app.use('/categories', categoriesRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
