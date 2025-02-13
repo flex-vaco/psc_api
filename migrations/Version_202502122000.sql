@@ -1,0 +1,1 @@
+ALTER TABLE `employee_details` CHANGE `role` `designation` VARCHAR(100) NULL;

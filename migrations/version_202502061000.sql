@@ -1,0 +1,1 @@
+ALTER TABLE `employee_project_allocations` ADD `rate_per_hour` FLOAT(7,2) NOT NULL DEFAULT '0' AFTER `shift_end_time`;
