@@ -15,5 +15,7 @@ router.get("/delete/:user_id", verifyToken, User.erase);
 router.post("/sign-in", User.signIn);
 router.post("/roles", verifyToken, User.getUserRoles);
 router.post("/resetPassword/:user_id", verifyToken, User.resetPassword);
-
+router.post("/getUserByRole", verifyToken, User.getUserByRole);
+router.post("/forgotPassword", User.forgotPassword);
+router.post("/updatePassword", User.resetPasswordRequest);
 module.exports = router;
