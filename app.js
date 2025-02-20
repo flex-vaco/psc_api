@@ -16,6 +16,7 @@ const clientsRouter = require('./routes/clients');
 const timesheetsRouter = require('./routes/timesheets');
 const hiringsRouter = require('./routes/hirings');
 const categoriesRouter = require('./routes/categories');
+const officeLocationRouter = require('./routes/officeLocations');
 const cors = require('cors');
 const app = express();
 
@@ -49,6 +50,7 @@ app.use('/clients', clientsRouter);
 app.use('/timesheets', timesheetsRouter);
 app.use('/hirings', hiringsRouter);
 app.use('/categories', categoriesRouter);
+app.use('/officeLocation', officeLocationRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
