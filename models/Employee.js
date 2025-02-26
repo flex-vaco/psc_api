@@ -3,6 +3,7 @@ const empTable = "employee_details";
 const multer = require('multer');
 const path = require('path');
 const userACL = require('../lib/userACL.js');
+const empProjAlloc = "employee_project_allocations";
 
 const findAll = (req, res) => { // filters by name if params are given
   if (!userACL.hasEmployeeReadAccess(req.user.role)) {
@@ -56,21 +57,35 @@ const search = (req, res) => {
     const empLocation =  req.query.location ?? null;
     const empExperience = req.query.exp ?? null;
     const empRole = req.query.role ?? null;
+    const empAvailability = req.query.availability ?? null;
     
-    let query = `SELECT * FROM ${empTable} WHERE 1 = 1`;
+    let query = `SELECT emp.*, 
+                  COALESCE(
+                    (SELECT SUM(hours_per_day) * 5 
+                      FROM employee_project_allocations 
+                      WHERE CURDATE() BETWEEN start_date AND end_date 
+                      AND emp_id = emp.emp_id 
+                      GROUP BY emp_id), 0) AS alc_per_week
+                  FROM ${empTable} emp
+                  WHERE 1 = 1`;
 
     if (empLocation) {
-      query = query + ` AND office_location_city LIKE '${empLocation}%'`;
+      query = query + ` AND emp.office_location_city LIKE '${empLocation}%'`;
     } 
 
     if (empExperience) {
-      query = query + ` AND total_work_experience_years <= ${empExperience}`;
+      query = query + ` AND emp.total_work_experience_years <= ${empExperience}`;
     }                                          
 
     if (empRole) {
-      query = query + ` AND role LIKE '%${empRole}%'`;
+      query = query + ` AND emp.role LIKE '%${empRole}%'`;
     }   
+
+    if (empAvailability) {
+      query = query + ` HAVING (40 - COALESCE(alc_per_week, 0)) >= ${empAvailability}`;
+    }
     
+
     sql.query(query, (err, rows) => {
       if (err) {
         console.log("error: ", err);

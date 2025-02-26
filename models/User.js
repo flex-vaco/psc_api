@@ -2,6 +2,7 @@ const sql = require("../lib/db.js");
 const bcrypt = require("bcrypt");
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const APP_EMAIL = require("../lib/email.js");
 
 const usersTable = "users";
 const APP_CONSTANTS = require('../lib/appConstants.js');
@@ -257,6 +258,22 @@ const resetPassword = (req, res) => {
 
 };
 
+const getUserByRole = (req, res) => {
+  const role = req.body.role;
+  if (role) {
+    const query = `SELECT * FROM ${usersTable} WHERE role = '${role}'`;
+    sql.query(query, (err, rows) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(500).send(`There was a problem finding the Users. ${err}`);
+      }
+      return res.status(200).send({users: rows});
+    });
+  } else {
+    return res.status(500).send("Role is required");
+  }
+}
+
 const erase = (req, res) => {
   const { user_id } = req.params;
   if(!user_id){
@@ -278,6 +295,82 @@ const erase = (req, res) => {
   });
 };
 
+const forgotPassword = (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(500).send('Email ID is Required');
+  }
+  const query = `SELECT * FROM ${usersTable} WHERE email = '${email}'`;
+  const protocol = req.protocol;  
+  const host = req.get('host');
+
+  sql.query(query, (err, rows) => {
+    if (err) {
+      console.log("error: ", err);
+      return res.status(500).send(`There was a problem finding the User. ${err}`);
+    }
+    if (rows.length == 0) {
+      return res.status(404).send(`User not found with Email ID: ${email}`);
+    } else {
+      const user = rows[0];
+      const jwToken = jwt.sign({ userId: user.user_id, email: user.email },process.env.JWT_SECRET,{ expiresIn: '3h' });
+      const values = {
+        resetLink: `${process.env.VACO_FLEX_UI}/updatePassword?token=${jwToken}`,
+        userName: `${user.first_name} ${user.last_name}`
+      };
+      APP_EMAIL.sendEmail('passwordResetRequest', values,subject = `Password Reset Request`, email);
+
+      return res.status(200).json({ message: "Token Generated!", token: jwToken });
+    }
+  });
+}
+
+const resetPasswordRequest = (req, res) => {
+  const { token, newPassword } = req.body;
+
+  try {
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      const selectQuery = 'SELECT user_id FROM users WHERE user_id = ? AND email = ?';
+      sql.query(selectQuery, [decoded.userId, decoded.email], (err, users) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (users.length === 0) {
+          return res.status(404).json({ error: 'User not found' });
+        }
+
+        bcrypt.hash(newPassword, 9, (hashErr, hashedPassword) => {
+          if (hashErr) {
+            console.error(hashErr);
+            return res.status(500).json({ error: 'Error hashing password' });
+          }
+
+          const updateQuery = 'UPDATE users SET password = ? WHERE user_id = ?';
+          sql.query(updateQuery, [hashedPassword, decoded.userId], (updateErr, result) => {
+            if (updateErr) {
+              console.error(updateErr);
+              return res.status(500).send(`Error updating password ${updateErr}`);
+            }
+            return res.status(200).send({'Password updated successfully': true});
+          });
+        });
+      });
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(400).json({ error: 'Invalid token' });
+    }
+    if (error.name === 'TokenExpiredError') {
+      return res.status(400).json({ error: 'Token has expired' });
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+}
+
 module.exports = {
   findAll,
   findById,
@@ -287,5 +380,8 @@ module.exports = {
   erase,
   signIn,
   getUserRoles,
-  resetPassword
+  resetPassword,
+  getUserByRole,
+  forgotPassword,
+  resetPasswordRequest,
 }
