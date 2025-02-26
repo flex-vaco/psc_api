@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS `hiring_comments` (
   KEY `hiring_id` (`hiring_id`),
   KEY `commented_by` (`commented_by`),
   CONSTRAINT `hiring_comments_fk_1` FOREIGN KEY (`hiring_id`) REFERENCES `hirings` (`hiring_id`),
-  CONSTRAINT `thiring_comments_fk_2` FOREIGN KEY (`commented_by`) REFERENCES `users` (`user_id`),
+  CONSTRAINT `thiring_comments_fk_2` FOREIGN KEY (`commented_by`) REFERENCES `users` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 DROP TABLE IF EXISTS `office_locations`;
