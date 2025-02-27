@@ -104,7 +104,15 @@ const create = (req, res) => {
           managerName: employeeDetails.manager_name,
           producerName: `${activeUser.first_name} ${activeUser.last_name}`,
           employeeName: empName,
-          producerEmail: activeUser.email
+          producerEmail: activeUser.email,
+          projectName: newHiring.project_name,
+          startDate: newHiring.start_date,
+          endDate: newHiring.end_date,
+          shiftTime: `${newHiring.shift_start_time} - ${newHiring.shift_end_time}`,
+          comment: newHiring.comments,
+          hoursPerWeek: newHiring.hours_per_week,
+          workLocation: newHiring.work_location,
+          loginUrl: `${process.env.VACO_FLEX_UI}`,
         };
         APP_EMAIL.sendEmail('newRequest', values,subject = `Booking query for ${empName}`, employeeDetails.manager_email);
 
@@ -138,7 +146,6 @@ const update = (req, res) => {
       res.status(500).send(`Problem while Updating the ${hiringsTable} with ID: ${hiringId}. ${err}`);
     } else {
       if (succeess.affectedRows == 1){
-        console.log(`${hiringsTable} UPDATED:` , succeess)
         updatedHiring.hiring_id = parseInt(hiringId);
         const response = {updatedHiring, user: req.user};
         res.status(200).send(response);
@@ -168,7 +175,6 @@ const erase = (req, res) => {
       res.status(500).send(`Problem while Deleting the ${hiringsTable} with ID: ${hiringId}. ${err}`);
     } else {
       if (succeess.affectedRows == 1){
-        console.log(`${hiringsTable} DELETED:` , succeess)
         res.status(200).send({msg: `Deleted row from ${hiringsTable} with ID: ${hiringId}`, user: req.user});
       } else {
         res.status(404).send(`Record not found with ID: ${hiringId}`);
