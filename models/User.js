@@ -104,6 +104,12 @@ const create = (req, res) => {
          // Define salt rounds
          const saltRounds = 9;
          // Hash password
+         const values = {
+          userName: `${newUser.first_name} ${newUser.last_name}`,
+          userEmail: newUser.email,
+          userPassword: newUser.password,
+          loginLink: `${process.env.VACO_FLEX_UI}`
+        };
          bcrypt.hash(newUser.password, saltRounds, (err, hash) => {
              if (err) throw new Error("Internal Server Error");
              newUser.password = hash;
@@ -115,12 +121,13 @@ const create = (req, res) => {
                      res.status(500).send(`Problem while Adding the User. ${err}`);
                  } else {
                      newUser.user_id = succeess.insertId;
+                     
+                      APP_EMAIL.sendEmail('newUserCreation', values,subject = `Welcome to Vaco Flex - Your New Account Details`, newUser.email);
                      if (producerClientQry) {
                       let values = [];
                       producerClients.forEach(cl_id =>{
                           values.push([newUser.user_id, cl_id])
                       })
-                      console.log("vv",values);
                       sql.query(producerClientQry, [values], (err, success) => {
                         if (err) {
                           console.log("error: ", err);

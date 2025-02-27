@@ -79,11 +79,13 @@ const search = (req, res) => {
       query = query + ` AND emp.role LIKE '%${empRole}%'`;
     }   
 
+    query = query + ` GROUP BY emp.emp_id`;
+    
     if (empAvailability) {
       query = query + ` HAVING (40 - COALESCE(alc_per_week, 0)) >= ${empAvailability}`;
     }
 
-    query = query + ` GROUP BY emp.emp_id`;
+    
     
 
     sql.query(query, (err, rows) => {
