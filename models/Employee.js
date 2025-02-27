@@ -60,13 +60,11 @@ const search = (req, res) => {
     const empAvailability = req.query.availability ?? null;
     
     let query = `SELECT emp.*, 
-                  COALESCE(
-                    (SELECT SUM(hours_per_day) * 5 
-                      FROM employee_project_allocations 
-                      WHERE CURDATE() BETWEEN start_date AND end_date 
-                      AND emp_id = emp.emp_id 
-                      GROUP BY emp_id), 0) AS alc_per_week
+                  COALESCE(SUM(ea.hours_per_day) * 5, 0) AS alc_per_week
                   FROM ${empTable} emp
+                  LEFT JOIN employee_project_allocations ea
+                  ON ea.emp_id = emp.emp_id 
+                  AND CURDATE() BETWEEN ea.start_date AND ea.end_date     
                   WHERE 1 = 1`;
 
     if (empLocation) {
@@ -84,6 +82,8 @@ const search = (req, res) => {
     if (empAvailability) {
       query = query + ` HAVING (40 - COALESCE(alc_per_week, 0)) >= ${empAvailability}`;
     }
+
+    query = query + ` GROUP BY emp.emp_id`;
     
 
     sql.query(query, (err, rows) => {

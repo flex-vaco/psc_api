@@ -247,7 +247,7 @@ const enquiredToMe = (req, res) => {
               JOIN 
                   users u ON h.created_by = u.user_id
               WHERE 
-                  h.manager_id = ${activeUser?.user_id} and h.status = 'enquired'
+                  h.manager_id = ${activeUser?.user_id}
               order by 
                   h.hiring_id desc`;
 
