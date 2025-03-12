@@ -3,7 +3,7 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-    <title>Welcome to Vaco Flex - Your New Account Details</title>
+    <title>New Comment Notification</title>
     <style type="text/css" rel="stylesheet" media="all">
         *:not(br):not(tr):not(html) {
             font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
@@ -138,6 +138,14 @@
             color: white;
         }
 
+        .comment-box {
+            background-color: #f9f9f9;
+            border-left: 4px solid #176ED9;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 3px 3px 0;
+        }
+
         h1 {
             margin-top: 0;
             color: #2F3133;
@@ -204,20 +212,12 @@
                             <tr>
                                 <td class="content-cell">
                                     <p>Hi {{userName}},</p>
-                                    <p>Welcome to Vaco Flex! Your account has been successfully created.</p>
-                                    <p>Below are your login details:</p>
-                                    <p><strong>Username:</strong> {{userEmail}}</p>
-                                    <p><strong>Password:</strong> {{userPassword}}</p>
-                                    <p>To log in, simply visit our website and use the credentials above.</p>
-                                    <table class="body-action" align="center" width="100%" cellpadding="0" cellspacing="0">
-                                        <tr>
-                                            <td align="center">
-                                                <a href="{{loginLink}}" class="button button--blue">Go to Login</a>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                    <p>If you didn’t create an account, please contact support immediately.</p>
-                                    <p>Thank you, <br>Vaco Flex Team</p>
+                                    <p>{{commenterName}} has added a new comment on the hiring request:</p>
+                                    
+                                    <div class="comment-box">
+                                        <p>{{commentText}}</p>
+                                    </div>
+                                    <p>Thank you, <br>{{siteName}}</p>
                                 </td>
                             </tr>
                         </table>
