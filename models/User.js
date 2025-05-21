@@ -122,7 +122,7 @@ const create = (req, res) => {
                  } else {
                      newUser.user_id = succeess.insertId;
                      
-                      APP_EMAIL.sendEmail('newUserCreation', values,subject = `Welcome to Vaco Flex - Your New Account Details`, newUser.email);
+                      //APP_EMAIL.sendEmail('newUserCreation', values,subject = `Welcome to Vaco Flex - Your New Account Details`, newUser.email);
                      if (producerClientQry) {
                       let values = [];
                       producerClients.forEach(cl_id =>{
@@ -325,7 +325,7 @@ const forgotPassword = (req, res) => {
         resetLink: `${process.env.VACO_FLEX_UI}/updatePassword?token=${jwToken}`,
         userName: `${user.first_name} ${user.last_name}`
       };
-      APP_EMAIL.sendEmail('passwordResetRequest', values,subject = `Password Reset Request`, email);
+      //APP_EMAIL.sendEmail('passwordResetRequest', values,subject = `Password Reset Request`, email);
 
       return res.status(200).json({ message: "Token Generated!", token: jwToken });
     }

@@ -79,13 +79,13 @@ const create = (req, res) => {
                     siteName: siteDefaults.siteName,
                 };
 
-                APP_EMAIL.sendEmail('newComment', values, subject, recipientEmail, (err, emailResult) => {
-                    if (err) {
-                        console.error('Error sending email:', err);
-                    } else {
-                        console.log('Email sent successfully:', emailResult);
-                    }
-                });
+                //APP_EMAIL.sendEmail('newComment', values, subject, recipientEmail, (err, emailResult) => {
+                //     if (err) {
+                //         console.error('Error sending email:', err);
+                //     } else {
+                //         console.log('Email sent successfully:', emailResult);
+                //     }
+                // });
             } else {
                 console.error('No recipient found for the provided comment.');
             }
