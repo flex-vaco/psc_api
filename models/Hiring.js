@@ -114,7 +114,7 @@ const create = (req, res) => {
           workLocation: newHiring.work_location,
           loginUrl: `${process.env.VACO_FLEX_UI}`,
         };
-        APP_EMAIL.sendEmail('newRequest', values,subject = `Booking query for ${empName}`, employeeDetails.manager_email);
+        //APP_EMAIL.sendEmail('newRequest', values,subject = `Booking query for ${empName}`, employeeDetails.manager_email);
 
         const response = {newHiring, user: req.user}
         res.status(200).send(response);

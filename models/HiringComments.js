@@ -79,7 +79,7 @@ const create = (req, res) => {
                     siteName: siteDefaults.siteName,
                 };
 
-                APP_EMAIL.sendEmail('newComment', values, subject, recipientEmail, (err, emailResult) => {
+                //APP_EMAIL.sendEmail('newComment', values, subject, recipientEmail, (err, emailResult) => {
                     if (err) {
                         console.error('Error sending email:', err);
                     } else {
