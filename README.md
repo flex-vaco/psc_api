@@ -1,4 +1,4 @@
-# psc_api
+# flex_api
 
 <b>What is it?</b></br>
 A platform for allowing customers to view availability & book in real-time VBS employed FTEs/consultants only for the duration needed, thereby preventing costs accrued due to unutilized hours.
@@ -14,7 +14,7 @@ In our meetings with potential customers, a question on bench strength is freque
 <h3> Database Set-up </h3>
 <ul>
 <li>Ensure MySQL is installed </li>
-<li>Create database 'psc_db' </li>
+<li>Create database 'flex_db' </li>
 <li>Import DB schema</li>
 </ul>
 </div>
