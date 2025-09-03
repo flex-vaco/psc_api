@@ -9,5 +9,6 @@ router.use(bodyParser.urlencoded({ extended: true }));
 
 router.post("/forecastHours", verifyToken, Report.forecastHours);
 router.post("/availableHours", verifyToken, Report.availableHours);
+router.post("/utilization", verifyToken, Report.utilization);
 
 module.exports = router;
