@@ -1,5 +1,6 @@
 const sql = require("../lib/db.js");
 const empTable = "employee_details";
+const empCapabilityAreasTable = "employee_capability_areas";
 const multer = require('multer');
 const path = require('path');
 const userACL = require('../lib/userACL.js');
@@ -15,15 +16,18 @@ const findAll = (req, res) => {
   const userRole = req.user.role;
   const userLineOfBusinessId = req.user.line_of_business_id;
  
-  let query = `SELECT * FROM ${empTable}`;
+  let query = `SELECT e.*, sl.name as service_line_name, lb.name as line_of_business_name 
+               FROM ${empTable} e 
+               LEFT JOIN service_line sl ON e.service_line_id = sl.service_line_id
+               LEFT JOIN line_of_business lb ON e.line_of_business_id = lb.line_of_business_id`;
   let whereConditions = [];
   
   if (managerEmail) {
-    whereConditions.push(`manager_email = '${managerEmail}'`);
+    whereConditions.push(`e.manager_email = '${managerEmail}'`);
   }
   
   if (userRole !== 'administrator' && userLineOfBusinessId) {
-    whereConditions.push(`line_of_business_id = ${userLineOfBusinessId}`);
+    whereConditions.push(`e.line_of_business_id = ${userLineOfBusinessId}`);
   }
   
   if (whereConditions.length > 0) {
@@ -47,13 +51,35 @@ const findById = (req, res) => {
 
   const empDetailsId = req.params.emp_id;
   if (empDetailsId) {
-    const query = `SELECT * FROM ${empTable} WHERE emp_id = '${empDetailsId}'`;
+    const query = `SELECT e.*, sl.name as service_line_name, lb.name as line_of_business_name 
+                   FROM ${empTable} e 
+                   LEFT JOIN service_line sl ON e.service_line_id = sl.service_line_id
+                   LEFT JOIN line_of_business lb ON e.line_of_business_id = lb.line_of_business_id
+                   WHERE e.emp_id = '${empDetailsId}'`;
     sql.query(query, (err, rows) => {
       if (err) {
         console.log("error: ", err);
         return res.status(500).send(`There was a problem finding the employee. ${err}`);
       }
-      return res.status(200).send({employees: rows, user: req.user});
+      
+      if (rows.length > 0) {
+        // Fetch capability areas for this employee
+        const capabilityQuery = `SELECT ca.capability_area_id, ca.name as capability_area_name 
+                                FROM ${empCapabilityAreasTable} eca 
+                                JOIN capability_area ca ON eca.capability_area_id = ca.capability_area_id 
+                                WHERE eca.emp_id = ?`;
+        sql.query(capabilityQuery, [empDetailsId], (capErr, capRows) => {
+          if (capErr) {
+            console.log("error fetching capability areas: ", capErr);
+            return res.status(500).send(`There was a problem finding the employee capability areas. ${capErr}`);
+          }
+          
+          rows[0].capability_areas = capRows;
+          return res.status(200).send({employees: rows, user: req.user});
+        });
+      } else {
+        return res.status(200).send({employees: rows, user: req.user});
+      }
     });
   } else {
     return res.status(500).send("Employee ID required");
@@ -163,17 +189,65 @@ const create = (req, res) => {
       newEmployee = req.body;
       newEmployee['resume'] = req.files['resume'][0]['filename'];
       newEmployee['profile_picture'] = req.files['profile_picture'][0]['filename'];
-      // console.log(req.file.filename);
+      
+      // Extract capability area IDs from the request
+      let capabilityAreaIds = [];
+      if (req.body.capability_area_ids) {
+        try {
+          // Try to parse as JSON first (from UI)
+          capabilityAreaIds = JSON.parse(req.body.capability_area_ids);
+        } catch (e) {
+          // If not JSON, treat as array or single value
+          capabilityAreaIds = Array.isArray(req.body.capability_area_ids) ? 
+            req.body.capability_area_ids : [req.body.capability_area_ids];
+        }
+      }
+      
+      // Remove capability_area_ids from newEmployee as it's not a column in employee_details
+      delete newEmployee.capability_area_ids;
+      
       console.log(newEmployee);
       const insertQuery = `INSERT INTO ${empTable} set ?`;
-      sql.query(insertQuery, [newEmployee], (err, succeess) => {
+      sql.query(insertQuery, [newEmployee], (err, success) => {
         if (err) {
           console.log("error: ", err);
           res.status(500).send(`Problem while Adding the employee. ${err}`);
         } else {
-          newEmployee.emp_id = succeess.insertId;
-          const response = {newEmployee, user: req.user};
-          res.status(200).send(response);
+          const empId = success.insertId;
+          newEmployee.emp_id = empId;
+          
+          // Insert capability areas if provided
+          if (capabilityAreaIds.length > 0) {
+            const capabilityAreasData = capabilityAreaIds.map(caId => ({
+              emp_id: empId,
+              capability_area_id: caId
+            }));
+            
+            const capabilityAreasQuery = `INSERT INTO ${empCapabilityAreasTable} SET ?`;
+            let completedInserts = 0;
+            let hasError = false;
+            
+            capabilityAreasData.forEach(data => {
+              sql.query(capabilityAreasQuery, [data], (capErr) => {
+                if (capErr) {
+                  console.log("Error inserting capability area:", capErr);
+                  if (!hasError) {
+                    hasError = true;
+                    res.status(500).send(`Problem while Adding employee capability areas. ${capErr}`);
+                  }
+                } else {
+                  completedInserts++;
+                  if (completedInserts === capabilityAreasData.length && !hasError) {
+                    const response = {newEmployee, user: req.user};
+                    res.status(200).send(response);
+                  }
+                }
+              });
+            });
+          } else {
+            const response = {newEmployee, user: req.user};
+            res.status(200).send(response);
+          }
         }
       });
     }else{
@@ -234,6 +308,22 @@ const update = (req, res) => {
     delete(updatedEmployee.resume_file_name);
     delete(updatedEmployee.profile_pic_file_name);
 
+    // Extract capability area IDs from the request
+    let capabilityAreaIds = [];
+    if (req.body.capability_area_ids) {
+      try {
+        // Try to parse as JSON first (from UI)
+        capabilityAreaIds = JSON.parse(req.body.capability_area_ids);
+      } catch (e) {
+        // If not JSON, treat as array or single value
+        capabilityAreaIds = Array.isArray(req.body.capability_area_ids) ? 
+          req.body.capability_area_ids : [req.body.capability_area_ids];
+      }
+    }
+    
+    // Remove capability_area_ids from updatedEmployee as it's not a column in employee_details
+    delete updatedEmployee.capability_area_ids;
+
     const updateQuery = `UPDATE ${empTable} set ? WHERE emp_id = ?`;
     sql.query(updateQuery, [updatedEmployee, emp_id], (err, success) => {
       if (err) {
@@ -242,8 +332,50 @@ const update = (req, res) => {
       } else {
         if (success.affectedRows == 1) {
           updatedEmployee.emp_id = parseInt(emp_id);
-          const response = { updatedEmployee, user: req.user }
-          res.status(200).send(response);
+          
+          // Update capability areas
+          // First, delete existing capability areas
+          const deleteCapabilityQuery = `DELETE FROM ${empCapabilityAreasTable} WHERE emp_id = ?`;
+          sql.query(deleteCapabilityQuery, [emp_id], (delErr) => {
+            if (delErr) {
+              console.log("Error deleting existing capability areas:", delErr);
+              res.status(500).send(`Problem while updating employee capability areas. ${delErr}`);
+              return;
+            }
+            
+            // Insert new capability areas if provided
+            if (capabilityAreaIds.length > 0) {
+              const capabilityAreasData = capabilityAreaIds.map(caId => ({
+                emp_id: parseInt(emp_id),
+                capability_area_id: caId
+              }));
+              
+              const capabilityAreasQuery = `INSERT INTO ${empCapabilityAreasTable} SET ?`;
+              let completedInserts = 0;
+              let hasError = false;
+              
+              capabilityAreasData.forEach(data => {
+                sql.query(capabilityAreasQuery, [data], (capErr) => {
+                  if (capErr) {
+                    console.log("Error inserting capability area:", capErr);
+                    if (!hasError) {
+                      hasError = true;
+                      res.status(500).send(`Problem while updating employee capability areas. ${capErr}`);
+                    }
+                  } else {
+                    completedInserts++;
+                    if (completedInserts === capabilityAreasData.length && !hasError) {
+                      const response = { updatedEmployee, user: req.user }
+                      res.status(200).send(response);
+                    }
+                  }
+                });
+              });
+            } else {
+              const response = { updatedEmployee, user: req.user }
+              res.status(200).send(response);
+            }
+          });
         } else {
           res.status(404).send({error: true, message:`Record not found with Employee Details ID: ${emp_id}`});
         }

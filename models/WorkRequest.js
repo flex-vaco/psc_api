@@ -446,56 +446,38 @@ const getResourcesByCapabilityAreas = (req, res) => {
     return res.status(400).send({error: true, message: "Capability area IDs are required"});
   }
   
-  // First get the capability area names
-  const capabilityAreaQuery = `SELECT capability_area_id, name FROM capability_area WHERE capability_area_id IN (${capabilityAreaIds.map(() => '?').join(',')})`;
-  sql.query(capabilityAreaQuery, capabilityAreaIds, (err, capabilityAreas) => {
+  // Build query to get employees who have the specified capability areas
+  let whereConditions = [];
+  whereConditions.push(`eca.capability_area_id IN (${capabilityAreaIds.map(() => '?').join(',')})`);
+
+  if (req.user.role !== 'administrator') {
+    whereConditions.push(`ed.line_of_business_id = ?`);
+  }
+
+  const query = `
+    SELECT DISTINCT ed.*, 
+           GROUP_CONCAT(DISTINCT ca.name) as capability_areas
+    FROM employee_details ed
+    INNER JOIN employee_capability_areas eca ON ed.emp_id = eca.emp_id
+    LEFT JOIN capability_area ca ON eca.capability_area_id = ca.capability_area_id
+    WHERE ${whereConditions.join(' AND ')}
+    GROUP BY ed.emp_id
+    ORDER BY ed.first_name, ed.last_name
+  `;
+
+  const queryParams = [...capabilityAreaIds];
+  if (req.user.role !== 'administrator') {
+    queryParams.push(req.user.line_of_business_id);
+  }
+
+  sql.query(query, queryParams, (err, results) => {
+    console.log("results: ", queryParams);
     if (err) {
-      console.log("Error fetching capability areas:", err);
-      return res.status(500).send({error: true, message: 'Error fetching capability areas'});
+      console.log("Error fetching resources by capability areas:", err);
+      return res.status(500).send({error: true, message: 'Error fetching resources'});
     }
-
-    if (capabilityAreas.length === 0) {
-      return res.send({error: false, resources: []});
-    }
-
-    const capabilityAreaNames = capabilityAreas.map(ca => ca.name);
     
-    
-    const capabilityConditions = capabilityAreaNames.map(name => 
-      `(ed.primary_skills LIKE ? OR ed.secondary_skills LIKE ?)`
-    ).join(' OR ');
-    
-    
-    let whereConditions = [];
-    if (capabilityConditions) {
-      whereConditions.push(`(${capabilityConditions})`);
-    }
-
-    if (req.user.role !== 'administrator') {
-      whereConditions.push(`ed.line_of_business_id = ${req.user.line_of_business_id}`);
-    }
-
-    const query = `
-      SELECT DISTINCT ed.* 
-      FROM employee_details ed
-      WHERE ${whereConditions.join(' AND ')}
-      ORDER BY ed.first_name, ed.last_name
-    `;
-
-    const queryParams = capabilityAreaNames.reduce((acc, name) => {
-      acc.push(`%${name}%`, `%${name}%`);
-      return acc;
-    }, []);
-
-    sql.query(query, queryParams, (err, results) => {
-      console.log("results: ", queryParams);
-      if (err) {
-        console.log("Error fetching resources by capability areas:", err);
-        return res.status(500).send({error: true, message: 'Error fetching resources'});
-      }
-      
-      res.send({error: false, resources: results});
-    });
+    res.send({error: false, resources: results});
   });
 };
 
@@ -609,49 +591,28 @@ const getFilteredResourcesForOffshoreLead = (req, res) => {
     return res.status(400).send({error: true, message: "Capability area IDs are required"});
   }
   
-  // First get the capability area names
-  const capabilityAreaQuery = `SELECT capability_area_id, name FROM capability_area WHERE capability_area_id IN (${capabilityAreaIds.map(() => '?').join(',')})`;
-  sql.query(capabilityAreaQuery, capabilityAreaIds, (err, capabilityAreas) => {
+  // Build query to get employees who have the specified capability areas
+  const query = `
+    SELECT DISTINCT ed.*, 
+           GROUP_CONCAT(DISTINCT ca.name) as capability_areas
+    FROM employee_details ed
+    INNER JOIN employee_capability_areas eca ON ed.emp_id = eca.emp_id
+    LEFT JOIN capability_area ca ON eca.capability_area_id = ca.capability_area_id
+    WHERE eca.capability_area_id IN (${capabilityAreaIds.map(() => '?').join(',')})
+      AND ed.line_of_business_id = ?
+    GROUP BY ed.emp_id
+    ORDER BY ed.first_name, ed.last_name
+  `;
+
+  const queryParams = [...capabilityAreaIds, req.user.line_of_business_id];
+
+  sql.query(query, queryParams, (err, results) => {
     if (err) {
-      console.log("Error fetching capability areas:", err);
-      return res.status(500).send({error: true, message: 'Error fetching capability areas'});
+      console.log("Error fetching filtered resources:", err);
+      return res.status(500).send({error: true, message: 'Error fetching resources'});
     }
-
-    if (capabilityAreas.length === 0) {
-      return res.send({error: false, resources: []});
-    }
-
-    const capabilityAreaNames = capabilityAreas.map(ca => ca.name);
     
-    // Build capability conditions for skills matching
-    const capabilityConditions = capabilityAreaNames.map(name => 
-      `(ed.primary_skills LIKE ? OR ed.secondary_skills LIKE ?)`
-    ).join(' OR ');
-    
-    const query = `
-      SELECT DISTINCT ed.* 
-      FROM employee_details ed
-      WHERE (${capabilityConditions})
-        AND ed.line_of_business_id = ?
-      ORDER BY ed.first_name, ed.last_name
-    `;
-
-    const queryParams = [
-      ...capabilityAreaNames.reduce((acc, name) => {
-        acc.push(`%${name}%`, `%${name}%`);
-        return acc;
-      }, []),
-      req.user.line_of_business_id
-    ];
-
-    sql.query(query, queryParams, (err, results) => {
-      if (err) {
-        console.log("Error fetching filtered resources:", err);
-        return res.status(500).send({error: true, message: 'Error fetching resources'});
-      }
-      
-      res.send({error: false, resources: results});
-    });
+    res.send({error: false, resources: results});
   });
 };
 

@@ -180,3 +180,28 @@ CREATE TABLE `work_request_offshore_leads` (
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
+ALTER TABLE `employee_details` 
+ADD COLUMN `service_line_id` int(10) unsigned NULL AFTER `line_of_business_id`;
+
+ALTER TABLE `employee_details` 
+ADD CONSTRAINT `fk_employee_details_service_line` 
+FOREIGN KEY (`service_line_id`) REFERENCES `service_line`(`service_line_id`) 
+ON DELETE SET NULL ON UPDATE CASCADE;
+
+CREATE TABLE `employee_capability_areas` (
+  `employee_capability_area_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `emp_id` int(10) unsigned NOT NULL,
+  `capability_area_id` int(10) unsigned NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`employee_capability_area_id`),
+  UNIQUE KEY `uk_employee_capability_area` (`emp_id`, `capability_area_id`),
+  KEY `idx_employee_capability_areas_emp_id` (`emp_id`),
+  KEY `idx_employee_capability_areas_capability_area_id` (`capability_area_id`),
+  CONSTRAINT `fk_employee_capability_areas_employee` 
+    FOREIGN KEY (`emp_id`) REFERENCES `employee_details`(`emp_id`) 
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_employee_capability_areas_capability_area` 
+    FOREIGN KEY (`capability_area_id`) REFERENCES `capability_area`(`capability_area_id`) 
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
