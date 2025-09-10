@@ -281,13 +281,64 @@ const findByEmpProjectId = (req, res) => {
   }
 };
 
+const getStartOfWeek = (date) => {
+  const d = new Date(date);
+  const day = d.getDay();
+  
+  if (day >= 1 && day <= 5) {
+    return d;
+  }
+  
+  if (day === 6) {
+    d.setDate(d.getDate() + 2);
+    return d;
+  }
+  
+  if (day === 0) {
+    d.setDate(d.getDate() + 1);
+    return d;
+  }
+  
+  return d;
+};
+
+const getEndOfWeek = (date) => {
+  const startOfWeek = getStartOfWeek(date);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 4); 
+  return endOfWeek;
+};
+
+const generateFourWeeks = (startDate) => {
+  const start = new Date(startDate);
+  const startOfFirstWeek = getStartOfWeek(start);
+  
+  const weeks = [];
+  
+  for (let i = 0; i < 4; i++) {
+    const weekStart = new Date(startOfFirstWeek);
+    weekStart.setDate(startOfFirstWeek.getDate() + (i * 7));
+    
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 4); 
+    weeks.push({
+      weekNumber: i + 1,
+      startDate: weekStart.toISOString().split('T')[0],
+      endDate: weekEnd.toISOString().split('T')[0],
+      label: `Week ${i + 1}`
+    });
+  }
+  
+  return weeks;
+};
+
 const getResourceAvailability = (req, res) => {
   if (!userACL.hasAllocationReadAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
     return res.status(404).send({error: true, message: msg});
   }
   
-  const { empIds, fromDate, toDate } = req.body;
+  const { empIds, fromDate, toDate, weeklyView = false } = req.body;
   
   if (!empIds || !Array.isArray(empIds) || empIds.length === 0) {
     return res.status(400).send({error: true, message: "Employee IDs array is required"});
@@ -300,59 +351,144 @@ const getResourceAvailability = (req, res) => {
   try {
     const empIdsStr = empIds.map(() => '?').join(',');
     
-    // Get allocations for the specified date range
-    const allocationQuery = `
-      SELECT 
-        emp_id,
-        SUM(hours_per_day * 5) as total_allocated_hours,
-        COUNT(*) as allocation_count
-      FROM ${empProjAlloc}
-      WHERE emp_id IN (${empIdsStr})
-        AND (
-          (start_date <= ? AND end_date >= ?) OR
-          (start_date <= ? AND end_date >= ?) OR
-          (start_date >= ? AND end_date <= ?)
-        )
-      GROUP BY emp_id
-    `;
-    
-    const queryParams = [
-      ...empIds,
-      fromDate, toDate,  // For allocations that span the entire period
-      fromDate, fromDate, // For allocations that start before and end during
-      toDate, toDate      // For allocations that start during and end after
-    ];
-    
-    sql.query(allocationQuery, queryParams, (err, allocations) => {
-      if (err) {
-        console.log("ProjectAllocation:: Error getting resource availability:", err);
-        return res.status(500).send({error: true, message: `Problem getting resource availability. ${err}`});
-      }
+    if (weeklyView) {
+      const weeks = generateFourWeeks(fromDate);
       
-      // Calculate available hours for each employee
-      const availabilityResults = empIds.map(empId => {
-        const allocation = allocations.find(a => a.emp_id === empId);
-        const totalAllocatedHours = allocation ? allocation.total_allocated_hours : 0;
-        
-        // Assuming 40 hours per week (8 hours per day * 5 days)
-        const totalAvailableHours = 40;
-        const availableHours = Math.max(0, totalAvailableHours - totalAllocatedHours);
-        
-        return {
-          emp_id: empId,
-          total_allocated_hours: totalAllocatedHours,
-          available_hours: availableHours,
-          allocation_count: allocation ? allocation.allocation_count : 0,
-          is_fully_available: totalAllocatedHours === 0
-        };
+      const weeklyAvailabilityPromises = weeks.map(week => {
+        return new Promise((resolve, reject) => {
+          const allocationQuery = `
+            SELECT 
+              emp_id,
+              SUM(hours_per_day * 5) as total_allocated_hours,
+              COUNT(*) as allocation_count
+            FROM ${empProjAlloc}
+            WHERE emp_id IN (${empIdsStr})
+              AND (
+                (start_date <= ? AND end_date >= ?) OR
+                (start_date <= ? AND end_date >= ?) OR
+                (start_date >= ? AND end_date <= ?)
+              )
+            GROUP BY emp_id
+          `;
+          
+          const queryParams = [
+            ...empIds,
+            week.startDate, week.endDate, 
+            week.startDate, week.startDate,
+            week.endDate, week.endDate 
+          ];
+          
+          sql.query(allocationQuery, queryParams, (err, allocations) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+            
+            const weekAvailability = empIds.map(empId => {
+              const allocation = allocations.find(a => a.emp_id === empId);
+              const totalAllocatedHours = allocation ? allocation.total_allocated_hours : 0;
+              
+              const totalAvailableHours = 40;
+              const availableHours = Math.max(0, totalAvailableHours - totalAllocatedHours);
+              
+              return {
+                emp_id: empId,
+                total_allocated_hours: totalAllocatedHours,
+                available_hours: availableHours,
+                allocation_count: allocation ? allocation.allocation_count : 0,
+                is_fully_available: totalAllocatedHours === 0
+              };
+            });
+            
+            resolve({
+              week: week,
+              availability: weekAvailability
+            });
+          });
+        });
       });
       
-      return res.status(200).send({ 
-        resource_availability: availabilityResults,
-        date_range: { from_date: fromDate, to_date: toDate },
-        user: req.user 
+      Promise.all(weeklyAvailabilityPromises)
+        .then(weeklyResults => {
+          const availabilityResults = empIds.map(empId => {
+            const weeklyData = weeklyResults.map(result => {
+              const empData = result.availability.find(a => a.emp_id === empId);
+              return {
+                week: result.week,
+                ...empData
+              };
+            });
+            
+            return {
+              emp_id: empId,
+              weekly_availability: weeklyData
+            };
+          });
+          
+          return res.status(200).send({ 
+            resource_availability: availabilityResults,
+            weeks: weeks,
+            date_range: { from_date: fromDate, to_date: toDate },
+            user: req.user 
+          });
+        })
+        .catch(err => {
+          console.log("ProjectAllocation:: Error getting weekly resource availability:", err);
+          return res.status(500).send({error: true, message: `Problem getting weekly resource availability. ${err}`});
+        });
+        
+    } else {
+      const allocationQuery = `
+        SELECT 
+          emp_id,
+          SUM(hours_per_day * 5) as total_allocated_hours,
+          COUNT(*) as allocation_count
+        FROM ${empProjAlloc}
+        WHERE emp_id IN (${empIdsStr})
+          AND (
+            (start_date <= ? AND end_date >= ?) OR
+            (start_date <= ? AND end_date >= ?) OR
+            (start_date >= ? AND end_date <= ?)
+          )
+        GROUP BY emp_id
+      `;
+      
+      const queryParams = [
+        ...empIds,
+        fromDate, toDate,  
+        fromDate, fromDate, 
+        toDate, toDate     
+      ];
+      
+      sql.query(allocationQuery, queryParams, (err, allocations) => {
+        if (err) {
+          console.log("ProjectAllocation:: Error getting resource availability:", err);
+          return res.status(500).send({error: true, message: `Problem getting resource availability. ${err}`});
+        }
+        
+        const availabilityResults = empIds.map(empId => {
+          const allocation = allocations.find(a => a.emp_id === empId);
+          const totalAllocatedHours = allocation ? allocation.total_allocated_hours : 0;
+          
+          const totalAvailableHours = 40;
+          const availableHours = Math.max(0, totalAvailableHours - totalAllocatedHours);
+          
+          return {
+            emp_id: empId,
+            total_allocated_hours: totalAllocatedHours,
+            available_hours: availableHours,
+            allocation_count: allocation ? allocation.allocation_count : 0,
+            is_fully_available: totalAllocatedHours === 0
+          };
+        });
+        
+        return res.status(200).send({ 
+          resource_availability: availabilityResults,
+          date_range: { from_date: fromDate, to_date: toDate },
+          user: req.user 
+        });
       });
-    });
+    }
     
   } catch (err) {
     console.log("ProjectAllocation:: Error in getResourceAvailability:", err);
