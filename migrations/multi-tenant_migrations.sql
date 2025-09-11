@@ -203,5 +203,5 @@ CREATE TABLE `employee_capability_areas` (
   CONSTRAINT `fk_employee_capability_areas_capability_area` 
     FOREIGN KEY (`capability_area_id`) REFERENCES `capability_area`(`capability_area_id`) 
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
