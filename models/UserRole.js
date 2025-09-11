@@ -1,6 +1,7 @@
 const sql = require("../lib/db.js");
 const userRolesTable = "user_roles";
 const userACL = require('../lib/userACL.js');
+const { reloadUserRoles } = require('../lib/appConstants');
 
 const findAll = (req, res) => {
   if (!userACL.hasUserRoleReadAccess(req.user.role)) {
@@ -11,7 +12,7 @@ const findAll = (req, res) => {
   let query = `
     SELECT ur.*, lb.name as line_of_business_name 
     FROM ${userRolesTable} ur 
-    LEFT JOIN line_of_business lb ON ur.line_of_business_id = lb.id
+    LEFT JOIN line_of_business lb ON ur.line_of_business_id = lb.line_of_business_id
   `;
   let whereConditions = [];
   
@@ -45,7 +46,7 @@ const findById = (req, res) => {
     const query = `
       SELECT ur.*, lb.name as line_of_business_name 
       FROM ${userRolesTable} ur 
-      LEFT JOIN line_of_business lb ON ur.line_of_business_id = lb.id
+      LEFT JOIN line_of_business lb ON ur.line_of_business_id = lb.line_of_business_id
       WHERE ur.role_id = ?
     `;
     sql.query(query, [roleId], (err, rows) => {
@@ -72,7 +73,7 @@ const findByLineOfBusiness = (req, res) => {
     const query = `
       SELECT ur.*, lb.name as line_of_business_name 
       FROM ${userRolesTable} ur 
-      LEFT JOIN line_of_business lb ON ur.line_of_business_id = lb.id
+      LEFT JOIN line_of_business lb ON ur.line_of_business_id = lb.line_of_business_id
       WHERE ur.line_of_business_id = ?
       ORDER BY ur.role
     `;
@@ -102,17 +103,30 @@ const create = (req, res) => {
   }
   
   const insertQuery = `INSERT INTO ${userRolesTable} SET ?`;
-  sql.query(insertQuery, [newUserRole], (err, success) => {
+  sql.query(insertQuery, [newUserRole], async (err, result) => {
     if (err) {
-      console.log("error: ", err);
-      if (err.code === 'ER_DUP_ENTRY') {
-        return res.status(400).send("Role name already exists");
-      }
-      return res.status(500).send(`Problem while adding the User Role. ${err}`);
+      console.error("Error adding user role:", err);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Failed to add user role" 
+      });
+    }
+    
+    const reloadResult = reloadUserRoles();
+    
+    if (reloadResult.success) {
+      res.status(201).json({
+        success: true,
+        message: "User role added and constants reloaded successfully",
+        roleId: result.insertId
+      });
     } else {
-      newUserRole.role_id = success.insertId;
-      const response = {newUserRole, user: req.user};
-      res.status(200).send(response);
+      res.status(201).json({
+        success: true,
+        message: "User role added but failed to reload constants",
+        roleId: result.insertId,
+        warning: reloadResult.message
+      });
     }
   });
 };

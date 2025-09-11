@@ -15,5 +15,14 @@ router.post("/update/:id", verifyToken, WorkRequest.update);
 router.get("/delete/:id", verifyToken, WorkRequest.erase);
 router.post("/resourcesByCapabilityAreas", verifyToken, WorkRequest.getResourcesByCapabilityAreas);
 router.get("/capabilityAreasByLineOfBusiness/:lineOfBusinessId", verifyToken, WorkRequest.getCapabilityAreasByLineOfBusiness);
+router.get("/offshoreLeads/serviceLine/:serviceLineId", verifyToken, WorkRequest.getOffshoreLeadsByServiceLine);
+router.get("/offshoreLead/assigned", verifyToken, WorkRequest.getWorkRequestsByOffshoreLead);
+
+// New routes for offshore lead workflow
+router.post("/offshoreLead/filteredResources", verifyToken, WorkRequest.getFilteredResourcesForOffshoreLead);
+router.post("/offshoreLead/updateStatus/:id", verifyToken, WorkRequest.updateWorkRequestStatus);
+
+// Submit work request (draft to submitted)
+router.post("/submit/:id", verifyToken, WorkRequest.submitWorkRequest);
 
 module.exports = router; 

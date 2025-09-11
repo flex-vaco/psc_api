@@ -388,6 +388,72 @@ const getTimesheetForExport = (req, res) => {
   }
 }
 
+const importTimesheet = (req, res) => { 
+  const activeUser = req.user;
+
+  if (!userACL.hasTimesheetAccess(activeUser?.role, APP_CONSTANTS.ACCESS_LEVELS.CREATE)) {
+    const msg = `User role '${activeUser?.role}' does not have privileges on this action`;
+    return res.status(404).send({ error: true, message: msg });
+  }
+  const timesheetJSON = req.body;
+
+  if (!Array.isArray(timesheetJSON) || timesheetJSON.length === 0) {
+    return res.status(400).json({ error: 'Invalid or empty data.' });
+  }
+
+  let insertedCount = 0;
+  let skippedCount = 0;
+  let errors = [];
+  
+  // Use Promise.all to wait for all queries
+  const insertPromises = timesheetJSON.map((row) => {
+      // Skip rows with empty Employee, Customer, and Case_Task_Event
+    if (
+      (!row.Employee || row.Employee.length < 1) &&
+      (!row.Customer || row.Customer.length < 1) &&
+      (!row.Case_Task_Event || row.Case_Task_Event.length < 1)
+    ) {
+      skippedCount++;
+      return Promise.resolve(); // Skip this row
+    }
+    row.created_by = activeUser?.user_id;
+    row.line_of_business_id = activeUser?.line_of_business_id;
+    return new Promise((resolve) => {
+      const insertSql = 'INSERT IGNORE INTO imported_timesheet_entries SET ?';
+      sql.query(insertSql, row, (err, result) => {
+        if (err) {
+          errors.push(err);
+          return resolve();
+        }
+
+        if (result.affectedRows > 0) {
+          insertedCount++;
+        } else {
+          // console.log("Bulk Timesheet entry Skipped: ", insertSql )
+          skippedCount++;
+        }
+
+        resolve();
+      });
+    });
+  });
+
+  // Respond once all inserts are done
+  Promise.all(insertPromises)
+    .then(() => {
+      res.json({
+        message: 'Insert process completed.',
+        total_entries: timesheetJSON.length,
+        inserted: insertedCount,
+        skipped: skippedCount,
+        errors: errors.length ? errors : null,
+      });
+    })
+    .catch((err) => {
+      console.error('Unexpected error:', err);
+      res.status(500).json({ error: 'Server error occurred.' });
+    });
+}
 module.exports = {
     getTimesheets,
     getTimesheetsByAllocation,
@@ -398,5 +464,6 @@ module.exports = {
     approvePendingEmployees,
     findByPendingEmployeeTimesheet,
     changeStatusSupervisior,
-    getTimesheetForExport
+    getTimesheetForExport,
+    importTimesheet
 }

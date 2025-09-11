@@ -10,8 +10,8 @@ const findAll = (req, res) => {
   }
   
   let query = `SELECT ca.*, sl.name as service_line_name, lb.name as line_of_business_name FROM ${capabilityAreaTable} ca 
-               LEFT JOIN service_line sl ON ca.service_line_id = sl.id
-               LEFT JOIN line_of_business lb ON ca.line_of_business_id = lb.id`;
+               LEFT JOIN service_line sl ON ca.service_line_id = sl.service_line_id
+               LEFT JOIN line_of_business lb ON ca.line_of_business_id = lb.line_of_business_id`;
   let whereConditions = [];
   
   if (req.user.role !== 'administrator') {
@@ -41,9 +41,9 @@ const findById = (req, res) => {
   const capabilityAreaId = req.params.id;
   if (capabilityAreaId) {
     let query = `SELECT ca.*, sl.name as service_line_name, lb.name as line_of_business_name FROM ${capabilityAreaTable} ca 
-                   LEFT JOIN service_line sl ON ca.service_line_id = sl.id 
-                   LEFT JOIN line_of_business lb ON ca.line_of_business_id = lb.id
-                   WHERE ca.id = ?`;
+                   LEFT JOIN service_line sl ON ca.service_line_id = sl.service_line_id 
+                   LEFT JOIN line_of_business lb ON ca.line_of_business_id = lb.line_of_business_id
+                   WHERE ca.capability_area_id = ?`;
     let params = [capabilityAreaId];
     
     if (req.user.role !== 'administrator') {
@@ -131,7 +131,7 @@ const create = (req, res) => {
       console.log("error: ", err);
       res.status(500).send(`Problem while Adding the Capability Area. ${err}`);
     } else {
-      newCapabilityArea.id = success.insertId;   
+      newCapabilityArea.capability_area_id = success.insertId;   
       const response = {newCapabilityArea, user: req.user}
       res.status(200).send(response);
     }
@@ -151,7 +151,7 @@ const update = (req, res) => {
   const updatedCapabilityArea = req.body;
   
   if (req.user.role !== 'administrator') {
-    const checkQuery = `SELECT line_of_business_id FROM ${capabilityAreaTable} WHERE id = ?`;
+    const checkQuery = `SELECT line_of_business_id FROM ${capabilityAreaTable} WHERE capability_area_id = ?`;
     sql.query(checkQuery, [id], (err, rows) => {
       if (err) {
         console.log("error: ", err);
@@ -177,7 +177,7 @@ const update = (req, res) => {
   }
   
   function proceedWithUpdate() {
-    const updateQuery = `UPDATE ${capabilityAreaTable} set ? WHERE id = ?`;
+    const updateQuery = `UPDATE ${capabilityAreaTable} set ? WHERE capability_area_id = ?`;
     sql.query(updateQuery,[updatedCapabilityArea, id], (err, success) => {
       if (err) {
         console.log("error: ", err);
@@ -185,7 +185,7 @@ const update = (req, res) => {
       } else {
         if (success.affectedRows == 1){
           console.log(`${capabilityAreaTable} UPDATED:` , success)
-          updatedCapabilityArea.id = parseInt(id);
+          updatedCapabilityArea.capability_area_id = parseInt(id);
           const response = {updatedCapabilityArea, user: req.user}
           res.status(200).send(response);
         } else {
@@ -208,7 +208,7 @@ const erase = (req, res) => {
   }
   
   if (req.user.role !== 'administrator') {
-    const checkQuery = `SELECT line_of_business_id FROM ${capabilityAreaTable} WHERE id = ?`;
+    const checkQuery = `SELECT line_of_business_id FROM ${capabilityAreaTable} WHERE capability_area_id = ?`;
     sql.query(checkQuery, [id], (err, rows) => {
       if (err) {
         console.log("error: ", err);
@@ -230,7 +230,7 @@ const erase = (req, res) => {
   }
   
   function proceedWithDelete() {
-    const deleteQuery = `DELETE FROM ${capabilityAreaTable} WHERE id = ?`;
+    const deleteQuery = `DELETE FROM ${capabilityAreaTable} WHERE capability_area_id = ?`;
     sql.query(deleteQuery,[id], (err, success) => {
       if (err) {
         console.log("error: ", err);

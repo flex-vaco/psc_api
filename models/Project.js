@@ -4,7 +4,7 @@ const userACL = require('../lib/userACL.js');
 const APP_CONSTANTS = require('../lib/appConstants.js');
 
 const findAll = (req, res) => {
-  if (!userACL.hasProjectReadAccess(req.user.role)) {
+  if (!userACL.hasProjectReadAccess(req.user.role) && !userACL.hasOffshoreLeadProjectAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
     return res.status(404).send({error: true, message: msg});
   }
@@ -50,7 +50,7 @@ const findAll = (req, res) => {
 };
 
 const findById = (req, res) => {
-  if (!userACL.hasProjectReadAccess(req.user.role)) {
+  if (!userACL.hasProjectReadAccess(req.user.role) && !userACL.hasOffshoreLeadProjectAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
     return res.status(404).send({error: true, message: msg});
   }
@@ -95,7 +95,7 @@ const findById = (req, res) => {
 };
 
 const create = (req, res) => {
-  if (!userACL.hasProjectCreateAccess(req.user.role)) {
+  if (!userACL.hasProjectCreateAccess(req.user.role) && !userACL.hasOffshoreLeadProjectAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
     return res.status(404).send({error: true, message: msg});
   }
@@ -126,7 +126,7 @@ const create = (req, res) => {
 };
 
 const update = (req, res) => {
-  if (!userACL.hasProjectUpdateAccess(req.user.role)) {
+  if (!userACL.hasProjectUpdateAccess(req.user.role) && !userACL.hasOffshoreLeadProjectAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
     return res.status(404).send({error: true, message: msg});
   }
@@ -185,7 +185,7 @@ const update = (req, res) => {
 };
 
 const erase = (req, res) => {
-  if (!userACL.hasProjectDeleteAccess(req.user.role)) {
+  if (!userACL.hasProjectDeleteAccess(req.user.role) && !userACL.hasOffshoreLeadProjectAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
     return res.status(404).send({error: true, message: msg});
   }
@@ -213,7 +213,7 @@ const erase = (req, res) => {
 };
 
 const findByLineOfBusiness = (req, res) => {
-  if (!userACL.hasProjectReadAccess(req.user.role)) {
+  if (!userACL.hasProjectReadAccess(req.user.role) && !userACL.hasOffshoreLeadProjectAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
     return res.status(404).send({error: true, message: msg});
   }

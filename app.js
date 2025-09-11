@@ -22,6 +22,7 @@ const serviceLineRouter = require('./routes/serviceLine');
 const capabilityAreaRouter = require('./routes/capabilityArea');
 const workRequestRouter = require('./routes/workRequest');
 const userRolesRouter = require('./routes/userRoles');
+const coiExtractRouter = require('./routes/coiExtract');
 const cors = require('cors');
 const app = express();
 
@@ -61,6 +62,7 @@ app.use('/serviceLine', serviceLineRouter);
 app.use('/capabilityArea', capabilityAreaRouter);
 app.use('/workRequest', workRequestRouter);
 app.use('/userRoles', userRolesRouter);
+app.use('/coiExtract', coiExtractRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

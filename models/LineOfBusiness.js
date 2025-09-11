@@ -25,7 +25,7 @@ const findById = (req, res) => {
   }
   const lineOfBusinessId = req.params.id;
   if (lineOfBusinessId) {
-    const query = `SELECT * FROM ${lineOfBusinessTable} WHERE id = '${lineOfBusinessId}'`;
+    const query = `SELECT * FROM ${lineOfBusinessTable} WHERE line_of_business_id = '${lineOfBusinessId}'`;
     sql.query(query, (err, rows) => {
       if (err) {
         console.log("error: ", err);
@@ -51,7 +51,7 @@ const create = (req, res) => {
       console.log("error: ", err);
       res.status(500).send(`Problem while Adding the Line of Business. ${err}`);
     } else {
-      newLineOfBusiness.id = success.insertId;   
+      newLineOfBusiness.line_of_business_id = success.insertId;   
       const response = {newLineOfBusiness, user: req.user}
       res.status(200).send(response);
     }
@@ -68,7 +68,7 @@ const update = (req, res) => {
     res.status(500).send('Line of Business ID is Required');
   }
   const updatedLineOfBusiness = req.body;
-  const updateQuery = `UPDATE ${lineOfBusinessTable} set ? WHERE id = ?`;
+  const updateQuery = `UPDATE ${lineOfBusinessTable} set ? WHERE line_of_business_id = ?`;
   sql.query(updateQuery,[updatedLineOfBusiness, id], (err, success) => {
     if (err) {
       console.log("error: ", err);
@@ -76,7 +76,7 @@ const update = (req, res) => {
     } else {
       if (success.affectedRows == 1){
         console.log(`${lineOfBusinessTable} UPDATED:` , success)
-        updatedLineOfBusiness.id = parseInt(id);
+        updatedLineOfBusiness.line_of_business_id = parseInt(id);
         const response = {updatedLineOfBusiness, user: req.user}
         res.status(200).send(response);
       } else {
@@ -96,7 +96,7 @@ const erase = (req, res) => {
     res.status(500).send('Line of Business ID is Required');
   }
 
-  const deleteQuery = `DELETE FROM ${lineOfBusinessTable} WHERE id = ?`;
+  const deleteQuery = `DELETE FROM ${lineOfBusinessTable} WHERE line_of_business_id = ?`;
   sql.query(deleteQuery,[id], (err, success) => {
     if (err) {
       console.log("error: ", err);

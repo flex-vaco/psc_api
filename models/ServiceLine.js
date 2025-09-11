@@ -9,7 +9,7 @@ const findAll = (req, res) => {
     return res.status(404).send({error: true, message: msg});
   }
   
-  let query = `SELECT sl.*, lb.name as line_of_business_name FROM ${serviceLineTable} sl LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.id`;
+  let query = `SELECT sl.*, lb.name as line_of_business_name FROM ${serviceLineTable} sl LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.line_of_business_id`;
   let whereConditions = [];
   
   if (req.user.role !== 'administrator') {
@@ -38,7 +38,7 @@ const findById = (req, res) => {
   }
   const serviceLineId = req.params.id;
   if (serviceLineId) {
-    let query = `SELECT sl.*, lb.name as line_of_business_name FROM ${serviceLineTable} sl LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.id WHERE sl.id = ?`;
+    let query = `SELECT sl.*, lb.name as line_of_business_name FROM ${serviceLineTable} sl LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.line_of_business_id WHERE sl.service_line_id = ?`;
     let params = [serviceLineId];
     
     if (req.user.role !== 'administrator') {
@@ -106,7 +106,7 @@ const create = (req, res) => {
       console.log("error: ", err);
       res.status(500).send(`Problem while Adding the Service Line. ${err}`);
     } else {
-      newServiceLine.id = success.insertId;   
+      newServiceLine.service_line_id = success.insertId;   
       const response = {newServiceLine, user: req.user}
       res.status(200).send(response);
     }
@@ -126,7 +126,7 @@ const update = (req, res) => {
   const updatedServiceLine = req.body;
   
   if (req.user.role !== 'administrator') {
-    const checkQuery = `SELECT line_of_business_id FROM ${serviceLineTable} WHERE id = ?`;
+    const checkQuery = `SELECT line_of_business_id FROM ${serviceLineTable} WHERE service_line_id = ?`;
     sql.query(checkQuery, [id], (err, rows) => {
       if (err) {
         console.log("error: ", err);
@@ -152,7 +152,7 @@ const update = (req, res) => {
   }
   
   function proceedWithUpdate() {
-    const updateQuery = `UPDATE ${serviceLineTable} set ? WHERE id = ?`;
+    const updateQuery = `UPDATE ${serviceLineTable} set ? WHERE service_line_id = ?`;
     sql.query(updateQuery,[updatedServiceLine, id], (err, success) => {
       if (err) {
         console.log("error: ", err);
@@ -160,7 +160,7 @@ const update = (req, res) => {
       } else {
         if (success.affectedRows == 1){
           console.log(`${serviceLineTable} UPDATED:` , success)
-          updatedServiceLine.id = parseInt(id);
+          updatedServiceLine.service_line_id = parseInt(id);
           const response = {updatedServiceLine, user: req.user}
           res.status(200).send(response);
         } else {
@@ -183,7 +183,7 @@ const erase = (req, res) => {
   }
   
   if (req.user.role !== 'administrator') {
-    const checkQuery = `SELECT line_of_business_id FROM ${serviceLineTable} WHERE id = ?`;
+    const checkQuery = `SELECT line_of_business_id FROM ${serviceLineTable} WHERE service_line_id = ?`;
     sql.query(checkQuery, [id], (err, rows) => {
       if (err) {
         console.log("error: ", err);
@@ -205,7 +205,7 @@ const erase = (req, res) => {
   }
   
   function proceedWithDelete() {
-    const deleteQuery = `DELETE FROM ${serviceLineTable} WHERE id = ?`;
+    const deleteQuery = `DELETE FROM ${serviceLineTable} WHERE service_line_id = ?`;
     sql.query(deleteQuery,[id], (err, success) => {
       if (err) {
         console.log("error: ", err);
@@ -222,10 +222,38 @@ const erase = (req, res) => {
   }
 };
 
+const findByOffshoreLead = (req, res) => {
+  if (!userACL.hasOffshoreLeadServiceLineAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
+  
+  const offshoreLeadId = req.user.user_id;
+  if (!offshoreLeadId) {
+    return res.status(400).send("Offshore Lead ID required");
+  }
+  
+  const query = `SELECT sl.*, lb.name as line_of_business_name 
+                 FROM ${serviceLineTable} sl 
+                 LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.line_of_business_id
+                 INNER JOIN offshore_lead_service_lines olsl ON sl.service_line_id = olsl.service_line_id
+                 WHERE olsl.offshore_lead_id = ? 
+                 ORDER BY sl.name`;
+  
+  sql.query(query, [offshoreLeadId], (err, rows) => {
+    if (err) {
+      console.log("error: ", err);
+      return res.status(500).send(`There was a problem getting service lines for offshore lead. ${err}`);
+    }
+    return res.status(200).send({serviceLines: rows, user: req.user});
+  });
+};
+
 module.exports = {
   findAll,
   findById,
   findByLineOfBusiness,
+  findByOffshoreLead,
   create,
   update,
   erase

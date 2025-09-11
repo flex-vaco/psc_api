@@ -14,7 +14,7 @@ const findAll = (req, res) => {
     return res.status(404).send({error: true, message: msg});
   }
   
-  let query = `SELECT u.*, lb.name as line_of_business_name FROM ${usersTable} u LEFT JOIN line_of_business lb ON u.line_of_business_id = lb.id`;
+  let query = `SELECT u.*, lb.name as line_of_business_name FROM ${usersTable} u LEFT JOIN line_of_business lb ON u.line_of_business_id = lb.line_of_business_id`;
   let whereConditions = [];
   
   if (req.user.role !== 'administrator') {
@@ -70,7 +70,7 @@ const findById = (req, res) => {
   const userId = req.params.user_id;
   
   if (userId) {
-    let query = `SELECT u.*, lb.name as line_of_business_name FROM ${usersTable} u LEFT JOIN line_of_business lb ON u.line_of_business_id = lb.id WHERE u.user_id = ?`;
+    let query = `SELECT u.*, lb.name as line_of_business_name FROM ${usersTable} u LEFT JOIN line_of_business lb ON u.line_of_business_id = lb.line_of_business_id WHERE u.user_id = ?`;
     let params = [userId];
     
     if (req.user.role !== 'administrator') {
@@ -158,13 +158,25 @@ const create = (req, res) => {
         } else {
           let producerClients = [];
           let producerClientQry = "";
+          let offshoreLeadServiceLines = [];
+          let offshoreLeadServiceLineQry = "";
+          
           if ((newUser.role === APP_CONSTANTS.USER_ROLES.PRODUCER) && newUser.client_ids) {
             producerClientQry = `INSERT INTO producer_clients (producer_id, client_id) VALUES ?`;
             newUser.client_ids.forEach(cl_id => {
               producerClients.push(cl_id);
             });
           }
+          
+          if ((newUser.role === APP_CONSTANTS.USER_ROLES.OFF_SHORE_LEAD) && newUser.service_line_ids) {
+            offshoreLeadServiceLineQry = `INSERT INTO offshore_lead_service_lines (offshore_lead_id, service_line_id) VALUES ?`;
+            newUser.service_line_ids.forEach(sl_id => {
+              offshoreLeadServiceLines.push(sl_id);
+            });
+          }
+          
           if (newUser.client_ids) delete newUser.client_ids;
+          if (newUser.service_line_ids) delete newUser.service_line_ids;
          // Define salt rounds
          const saltRounds = 9;
          // Hash password
@@ -196,6 +208,35 @@ const create = (req, res) => {
                         if (err) {
                           console.log("error: ", err);
                           res.status(500).send(`Problem while Adding Producer_Client. ${err}`);
+                      } else {
+                        // Handle offshore lead service lines after producer clients
+                        if (offshoreLeadServiceLineQry) {
+                          let serviceLineValues = [];
+                          offshoreLeadServiceLines.forEach(sl_id =>{
+                              serviceLineValues.push([newUser.user_id, sl_id])
+                          })
+                          sql.query(offshoreLeadServiceLineQry, [serviceLineValues], (err, success) => {
+                            if (err) {
+                              console.log("error: ", err);
+                              res.status(500).send(`Problem while Adding Offshore_Lead_Service_Line. ${err}`);
+                          } else {
+                            res.status(200).send(newUser);
+                          }
+                          });
+                        } else {
+                          res.status(200).send(newUser);
+                        }
+                      }
+                      });
+                     } else if (offshoreLeadServiceLineQry) {
+                      let serviceLineValues = [];
+                      offshoreLeadServiceLines.forEach(sl_id =>{
+                          serviceLineValues.push([newUser.user_id, sl_id])
+                      })
+                      sql.query(offshoreLeadServiceLineQry, [serviceLineValues], (err, success) => {
+                        if (err) {
+                          console.log("error: ", err);
+                          res.status(500).send(`Problem while Adding Offshore_Lead_Service_Line. ${err}`);
                       } else {
                         res.status(200).send(newUser);
                       }
@@ -279,6 +320,9 @@ const update = (req, res) => {
   function proceedWithUpdate() {
   let producerClients = [];
   let producerClientQry = "";
+  let offshoreLeadServiceLines = [];
+  let offshoreLeadServiceLineQry = "";
+  
   if ((updatedUser.role === APP_CONSTANTS.USER_ROLES.PRODUCER) && updatedUser.client_ids) {
     producerClientQry = `INSERT INTO producer_clients (producer_id, client_id) VALUES ? 
 	                        ON DUPLICATE KEY UPDATE 
@@ -289,7 +333,20 @@ const update = (req, res) => {
       producerClients.push(cl_id);
     });
   }
+  
+  if ((updatedUser.role === APP_CONSTANTS.USER_ROLES.OFF_SHORE_LEAD) && updatedUser.service_line_ids) {
+    offshoreLeadServiceLineQry = `INSERT INTO offshore_lead_service_lines (offshore_lead_id, service_line_id) VALUES ? 
+	                        ON DUPLICATE KEY UPDATE 
+	                        service_line_id = VALUES(service_line_id),
+	                        offshore_lead_id = VALUES(offshore_lead_id)`;
+
+    updatedUser.service_line_ids.forEach(sl_id => {
+      offshoreLeadServiceLines.push(sl_id);
+    });
+  }
+  
   if (updatedUser.client_ids) delete updatedUser.client_ids;
+  if (updatedUser.service_line_ids) delete updatedUser.service_line_ids;
 
   const updateQuery = `UPDATE ${usersTable} set ? WHERE user_id = ?`;
   sql.query(updateQuery,[updatedUser, user_id], (err, succeess) => {
@@ -300,28 +357,68 @@ const update = (req, res) => {
       if (succeess.affectedRows == 1) {
         console.log(`${usersTable} UPDATED: `, succeess);
         updatedUser.user_id = parseInt(user_id);
-          const delExisting = `DELETE FROM producer_clients WHERE producer_id = ?`;
-          sql.query(delExisting, [updatedUser.user_id], (del_err, del_suc) => { //effective if user is changed from producer to other roles
-            if (del_err) {
-              console.log("Producer-Client deletion error: ", del_err);
-              res.status(500).send(`Problem while Deleting producer_client with producer_ID: ${updatedUser.user_id}. ${del_err}`);
+          // Delete existing producer clients and offshore lead service lines
+          const delExistingProducer = `DELETE FROM producer_clients WHERE producer_id = ?`;
+          const delExistingOffshoreLead = `DELETE FROM offshore_lead_service_lines WHERE offshore_lead_id = ?`;
+          
+          sql.query(delExistingProducer, [updatedUser.user_id], (del_prod_err, del_prod_suc) => {
+            if (del_prod_err) {
+              console.log("Producer-Client deletion error: ", del_prod_err);
+              res.status(500).send(`Problem while Deleting producer_client with producer_ID: ${updatedUser.user_id}. ${del_prod_err}`);
             } else {
-              if (producerClientQry) {
-                let values = [];
-                producerClients.forEach(cl_id => {
-                  values.push([updatedUser.user_id, cl_id])
-                })
-                sql.query(producerClientQry, [values], (updt_err, updt_suc) => {
-                  if (del_err) {
-                    console.log("Producer-Client UPDATE Error: ", updt_err);
-                    res.status(500).send(`Problem while Updating producer_client with producer_ID: ${updatedUser.user_id}. ${updt_err}`);
+              sql.query(delExistingOffshoreLead, [updatedUser.user_id], (del_offshore_err, del_offshore_suc) => {
+                if (del_offshore_err) {
+                  console.log("Offshore-Lead-Service-Line deletion error: ", del_offshore_err);
+                  res.status(500).send(`Problem while Deleting offshore_lead_service_lines with offshore_lead_id: ${updatedUser.user_id}. ${del_offshore_err}`);
+                } else {
+                  // Handle producer clients
+                  if (producerClientQry) {
+                    let values = [];
+                    producerClients.forEach(cl_id => {
+                      values.push([updatedUser.user_id, cl_id])
+                    })
+                    sql.query(producerClientQry, [values], (updt_err, updt_suc) => {
+                      if (updt_err) {
+                        console.log("Producer-Client UPDATE Error: ", updt_err);
+                        res.status(500).send(`Problem while Updating producer_client with producer_ID: ${updatedUser.user_id}. ${updt_err}`);
+                      } else {
+                        // Handle offshore lead service lines
+                        if (offshoreLeadServiceLineQry) {
+                          let serviceLineValues = [];
+                          offshoreLeadServiceLines.forEach(sl_id => {
+                            serviceLineValues.push([updatedUser.user_id, sl_id])
+                          })
+                          sql.query(offshoreLeadServiceLineQry, [serviceLineValues], (updt_offshore_err, updt_offshore_suc) => {
+                            if (updt_offshore_err) {
+                              console.log("Offshore-Lead-Service-Line UPDATE Error: ", updt_offshore_err);
+                              res.status(500).send(`Problem while Updating offshore_lead_service_lines with offshore_lead_id: ${updatedUser.user_id}. ${updt_offshore_err}`);
+                            } else {
+                              res.status(200).send(updatedUser);
+                            }
+                          });
+                        } else {
+                          res.status(200).send(updatedUser);
+                        }
+                      }
+                    });
+                  } else if (offshoreLeadServiceLineQry) {
+                    let serviceLineValues = [];
+                    offshoreLeadServiceLines.forEach(sl_id => {
+                      serviceLineValues.push([updatedUser.user_id, sl_id])
+                    })
+                    sql.query(offshoreLeadServiceLineQry, [serviceLineValues], (updt_offshore_err, updt_offshore_suc) => {
+                      if (updt_offshore_err) {
+                        console.log("Offshore-Lead-Service-Line UPDATE Error: ", updt_offshore_err);
+                        res.status(500).send(`Problem while Updating offshore_lead_service_lines with offshore_lead_id: ${updatedUser.user_id}. ${updt_offshore_err}`);
+                      } else {
+                        res.status(200).send(updatedUser);
+                      }
+                    });
                   } else {
                     res.status(200).send(updatedUser);
                   }
-                });
-              } else {
-                res.status(200).send(updatedUser);
-              }
+                }
+              });
             }
           });
       } else {
@@ -333,11 +430,6 @@ const update = (req, res) => {
 };
 
 const resetPassword = (req, res) => {
-  if (!userACL.hasUserUpdateAccess(req.user.role)) {
-    const msg = `User role '${req.user.role}' does not have privileges on this action`;
-    return res.status(404).send({error: true, message: msg});
-  }
-  
   const { user_id } = req.params;
   if(!user_id){
     res.status(500).send('User ID is Required');
@@ -551,7 +643,7 @@ const findByLineOfBusiness = (req, res) => {
   }
   const lineOfBusinessId = req.params.lineOfBusinessId;
   if (lineOfBusinessId) {
-    const query = `SELECT u.*, lb.name as line_of_business_name FROM ${usersTable} u LEFT JOIN line_of_business lb ON u.line_of_business_id = lb.id WHERE u.line_of_business_id = ? ORDER BY u.first_name, u.last_name`;
+    const query = `SELECT u.*, lb.name as line_of_business_name FROM ${usersTable} u LEFT JOIN line_of_business lb ON u.line_of_business_id = lb.line_of_business_id WHERE u.line_of_business_id = ? ORDER BY u.first_name, u.last_name`;
     sql.query(query, [lineOfBusinessId], (err, rows) => {
       if (err) {
         console.log("error: ", err);
@@ -562,6 +654,34 @@ const findByLineOfBusiness = (req, res) => {
   } else {
     return res.status(500).send("Line of Business ID required");
   }
+};
+
+const getOffshoreLeadsByServiceLine = (req, res) => {
+  if (!userACL.hasUserReadAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
+  
+  const serviceLineId = req.params.serviceLineId;
+  if (!serviceLineId) {
+    return res.status(400).send({error: true, message: "Service Line ID is required"});
+  }
+  
+  const query = `
+    SELECT DISTINCT u.user_id, u.first_name, u.last_name, u.email, u.role, u.line_of_business_id
+    FROM ${usersTable} u
+    INNER JOIN offshore_lead_service_lines olsl ON u.user_id = olsl.offshore_lead_id
+    WHERE olsl.service_line_id = ? AND u.role = 'off_shore_lead'
+    ORDER BY u.first_name, u.last_name
+  `;
+  
+  sql.query(query, [serviceLineId], (err, rows) => {
+    if (err) {
+      console.log("error: ", err);
+      return res.status(500).send(`There was a problem getting offshore leads for service line. ${err}`);
+    }
+    return res.status(200).send({offshoreLeads: rows, user: req.user});
+  });
 };
 
 module.exports = {
@@ -577,6 +697,7 @@ module.exports = {
   getUserByRole,
   getManagersByLineOfBusiness,
   findByLineOfBusiness,
+  getOffshoreLeadsByServiceLine,
   forgotPassword,
   resetPasswordRequest,
 }
