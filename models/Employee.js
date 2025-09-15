@@ -147,10 +147,21 @@ const search = (req, res) => {
             let records = rows.filter((row)=>{
                                         let found = false;
                                         empSkills.forEach((empSkill) => {
+                                             // Check capability_areas
                                              if (row.capability_areas) {
                                                let capabilityAreaList = row.capability_areas.split(',');
                                                capabilityAreaList.forEach((capabilityArea)=> {
                                                     if (capabilityArea.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
+                                                      found = true;
+                                                      return found;
+                                                    }
+                                               })
+                                             }
+                                             // Check primary_skills
+                                             if (row.primary_skills) {
+                                               let primarySkillList = row.primary_skills.split(',');
+                                               primarySkillList.forEach((skill)=> {
+                                                    if (skill.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
                                                       found = true;
                                                       return found;
                                                     }
