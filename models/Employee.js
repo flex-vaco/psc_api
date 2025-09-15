@@ -135,8 +135,6 @@ const search = (req, res) => {
     if (empAvailability) {
       query = query + ` HAVING (40 - COALESCE(alc_per_week, 0)) >= ${empAvailability}`;
     }
-
-    
   
     sql.query(query, (err, rows) => { 
       if (err) {
@@ -161,6 +159,16 @@ const search = (req, res) => {
                                              if (row.primary_skills) {
                                                let primarySkillList = row.primary_skills.split(',');
                                                primarySkillList.forEach((skill)=> {
+                                                    if (skill.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
+                                                      found = true;
+                                                      return found;
+                                                    }
+                                               })
+                                             }
+                                             // Check secondary_skills
+                                             if (row.secondary_skills) {
+                                               let secondarySkillList = row.secondary_skills.split(',');
+                                               secondarySkillList.forEach((skill)=> {
                                                     if (skill.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
                                                       found = true;
                                                       return found;

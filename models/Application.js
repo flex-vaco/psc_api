@@ -121,10 +121,13 @@ const getTechnologies = (req, res) => {
         })
       }
       
-      // Add secondary skills to all technologies
+      // Add secondary skills and primary skills to all technologies
       skillsRecords.forEach((record) => {
         if (record.secondary_skills) {
           allTechnologies.push(record.secondary_skills);
+        }
+        if (record.primary_skills) {
+          allTechnologies.push(record.primary_skills);
         }
       });
       
