@@ -16,8 +16,47 @@ const getCategories = (req, res) => {
   });
 };
 
+const getServiceLinesForHome = (req, res) => {
+  const user = req.user;
+  let query = `SELECT sl.*, lb.name as line_of_business_name FROM service_line sl 
+               LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.line_of_business_id`;
+  let whereConditions = [];
+  let params = [];
+  if (user.role === 'administrator') {
+    // Administrator sees all service lines
+    query += ` ORDER BY sl.name`;
+  } else if (user.role === 'project_manager' || user.role === 'lob_admin') {
+    
+    whereConditions.push(`sl.line_of_business_id = ?`);
+    params.push(user.line_of_business_id);
+    query += ` WHERE ${whereConditions.join(' AND ')} ORDER BY sl.name`;
+  } else if (user.role === 'off_shore_lead') {
+    query = `SELECT sl.*, lb.name as line_of_business_name FROM service_line sl 
+             LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.line_of_business_id
+             INNER JOIN offshore_lead_service_lines olsl ON sl.service_line_id = olsl.service_line_id
+             WHERE olsl.offshore_lead_id = ? 
+             ORDER BY sl.name`;
+    params.push(user.user_id);
+  } else {
+    // Default fallback - show all service lines
+    query += ` ORDER BY sl.name`;
+  }
+
+  sql.query(query, params, (err, rows) => {
+    if (err) {
+      console.log("error: ", err);
+      return res.status(500).send(`There was a problem getting service lines. ${err}`);
+    }
+    return res.status(200).send({serviceLines: rows});
+  });
+};
+
 const getTechnologies = (req, res) => {
-  let query =`SELECT secondary_skills, primary_skills FROM ${empTable}`;
+  let query = `SELECT DISTINCT ca.name as capability_area_name 
+               FROM ${empTable} emp
+               LEFT JOIN employee_capability_areas eca ON eca.emp_id = emp.emp_id
+               LEFT JOIN capability_area ca ON ca.capability_area_id = eca.capability_area_id
+               WHERE ca.name IS NOT NULL`;
   sql.query(query, (err, rows) => {
     if (err) {
       console.log("error: ", err);
@@ -29,22 +68,19 @@ const getTechnologies = (req, res) => {
           records = rows.filter((row)=>{
                                     let found = false;
                                     empSkills.forEach((empSkill) => {
-                                        let primarySkillList = row.primary_skills.split(',');
-                                        primarySkillList.filter((skill)=> {
-                                          if (skill.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
+                                        if (row.capability_area_name) {
+                                          if (row.capability_area_name.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
                                             found = true;
                                             return found;
                                           }
-                                        })
+                                        }
                                     }) 
                                     return found;                                                                      
                                   })
     }
 
-        records = records.map((record) => { return record.secondary_skills;});
-        records = records.join(',').split(',').map((skill) => {
-                          return skill.trim().replace(/(^\w|\s\w)/g, m => m.toUpperCase());         
-                          }).filter((skill) => { return skill !== '' });
+        records = records.map((record) => { return record.capability_area_name;});
+        records = records.filter((skill) => { return skill !== '' && skill !== null; });
         records = Array.from(new Set(records));
         
         return res.status(200).send({technologies: records});
@@ -145,6 +181,7 @@ const saveUserQuery = (req, res) => {
 
 module.exports = {
     getCategories,
+    getServiceLinesForHome,
     getTechnologies,
     sendEmail,
     getChatResp,

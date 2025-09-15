@@ -101,11 +101,16 @@ const search = (req, res) => {
     const userLineOfBusinessId = req.user.line_of_business_id;
     
     let query = `SELECT emp.*, 
-                  COALESCE(SUM(ea.hours_per_day) * 5, 0) AS alc_per_week
+                  COALESCE(SUM(ea.hours_per_day) * 5, 0) AS alc_per_week,
+                  GROUP_CONCAT(DISTINCT ca.name) AS capability_areas
                   FROM ${empTable} emp
                   LEFT JOIN employee_project_allocations ea
                   ON ea.emp_id = emp.emp_id 
-                  AND CURDATE() BETWEEN ea.start_date AND ea.end_date     
+                  AND CURDATE() BETWEEN ea.start_date AND ea.end_date
+                  LEFT JOIN ${empCapabilityAreasTable} eca
+                  ON eca.emp_id = emp.emp_id
+                  LEFT JOIN capability_area ca
+                  ON ca.capability_area_id = eca.capability_area_id     
                   WHERE 1 = 1`;
     
     // Filter by line of business if user is not administrator
@@ -132,9 +137,8 @@ const search = (req, res) => {
     }
 
     
-    
-
-    sql.query(query, (err, rows) => {
+  
+    sql.query(query, (err, rows) => { 
       if (err) {
         console.log("error: ", err);
         return res.status(500).send(`There was a problem finding the employee. ${err}`);
@@ -143,13 +147,15 @@ const search = (req, res) => {
             let records = rows.filter((row)=>{
                                         let found = false;
                                         empSkills.forEach((empSkill) => {
-                                             let primarySkillList = row.primary_skills.split(',');
-                                             primarySkillList.filter((skill)=> {
-                                                    if (skill.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
+                                             if (row.capability_areas) {
+                                               let capabilityAreaList = row.capability_areas.split(',');
+                                               capabilityAreaList.forEach((capabilityArea)=> {
+                                                    if (capabilityArea.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
                                                       found = true;
                                                       return found;
                                                     }
-                                             })
+                                               })
+                                             }
                                         }) 
                                         return found;                                                                      
                                       })

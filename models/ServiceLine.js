@@ -2,6 +2,8 @@ const sql = require("../lib/db.js");
 const serviceLineTable = "service_line";
 const userACL = require('../lib/userACL.js');
 const APP_CONSTANTS = require('../lib/appConstants.js');
+const multer = require('multer');
+const path = require('path');
 
 const findAll = (req, res) => {
   if (!userACL.hasServiceLineReadAccess(req.user.role)) {
@@ -89,26 +91,51 @@ const create = (req, res) => {
     return res.status(404).send({error: true, message: msg});
   }
   
-  const newServiceLine = req.body;
-  
-  if (req.user.role !== 'administrator') {
-    if (!newServiceLine.line_of_business_id) {
-      return res.status(400).send("Line of business is required for non administrator users");
+  const fileNameSuffix = Date.now();
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      if (file.fieldname === "image_name") {
+        cb(null, 'public/uploads/technologies');
+      }
+    },
+    filename: (req, file, cb) => {
+      cb(null, `${file.fieldname}-${fileNameSuffix}${path.extname(file.originalname)}`);
     }
-    if (newServiceLine.line_of_business_id != req.user.line_of_business_id) {
-      return res.status(403).send("Non administrator users can only create service lines in their own line of business");
-    }
-  }
+  });
+
+  var upload = multer({ storage: storage });
+  var singleUpload = upload.single('image_name');
   
-  const insertQuery = `INSERT INTO ${serviceLineTable} set ?`;
-  sql.query(insertQuery, [newServiceLine], (err, success) => {
+  singleUpload(req, res, function(err) {
     if (err) {
-      console.log("error: ", err);
-      res.status(500).send(`Problem while Adding the Service Line. ${err}`);
+      res.status(500).send(`Problem while Uploading file: ${err}`);
     } else {
-      newServiceLine.service_line_id = success.insertId;   
-      const response = {newServiceLine, user: req.user}
-      res.status(200).send(response);
+      const newServiceLine = req.body;
+      
+      if (req.user.role !== 'administrator') {
+        if (!newServiceLine.line_of_business_id) {
+          return res.status(400).send("Line of business is required for non administrator users");
+        }
+        if (newServiceLine.line_of_business_id != req.user.line_of_business_id) {
+          return res.status(403).send("Non administrator users can only create service lines in their own line of business");
+        }
+      }
+      
+      if (req.file) {
+        newServiceLine['image_name'] = req.file.filename;
+      }
+      
+      const insertQuery = `INSERT INTO ${serviceLineTable} set ?`;
+      sql.query(insertQuery, [newServiceLine], (err, success) => {
+        if (err) {
+          console.log("error: ", err);
+          res.status(500).send(`Problem while Adding the Service Line. ${err}`);
+        } else {
+          newServiceLine.service_line_id = success.insertId;   
+          const response = {newServiceLine, user: req.user}
+          res.status(200).send(response);
+        }
+      });
     }
   });
 };
@@ -123,52 +150,86 @@ const update = (req, res) => {
   if(!id){
     res.status(500).send('Service Line ID is Required');
   }
-  const updatedServiceLine = req.body;
   
-  if (req.user.role !== 'administrator') {
-    const checkQuery = `SELECT line_of_business_id FROM ${serviceLineTable} WHERE service_line_id = ?`;
-    sql.query(checkQuery, [id], (err, rows) => {
-      if (err) {
-        console.log("error: ", err);
-        return res.status(500).send(`Problem while checking service line access. ${err}`);
+  const fileNameSuffix = Date.now();
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      if (file.fieldname === "image_name") {
+        cb(null, 'public/uploads/technologies');
       }
-      
-      if (rows.length === 0) {
-        return res.status(404).send("Service Line not found");
-      }
-      
-      if (rows[0].line_of_business_id != req.user.line_of_business_id) {
-        return res.status(403).send("Non administrator users can only update service lines in their own line of business");
-      }
-      
-      if (updatedServiceLine.line_of_business_id && updatedServiceLine.line_of_business_id != req.user.line_of_business_id) {
-        return res.status(403).send("Non administrator users cannot change service line's line of business");
-      }
-      
-      proceedWithUpdate();
-    });
-  } else {
-    proceedWithUpdate();
-  }
-  
-  function proceedWithUpdate() {
-    const updateQuery = `UPDATE ${serviceLineTable} set ? WHERE service_line_id = ?`;
-    sql.query(updateQuery,[updatedServiceLine, id], (err, success) => {
-      if (err) {
-        console.log("error: ", err);
-        res.status(500).send(`Problem while Updating the ${serviceLineTable} with ID: ${id}. ${err}`);
-      } else {
-        if (success.affectedRows == 1){
-          console.log(`${serviceLineTable} UPDATED:` , success)
-          updatedServiceLine.service_line_id = parseInt(id);
-          const response = {updatedServiceLine, user: req.user}
-          res.status(200).send(response);
+    },
+    filename: (req, file, cb) => {
+      if (file.fieldname === "image_name") {
+        if (req.body.image_file_name && ![null, 'null'].includes(req.body.image_file_name)) {
+          cb(null, req.body.image_file_name);
         } else {
-          res.status(404).send(`Record not found with Service Line ID: ${id}`);
+          cb(null, `${file.fieldname}-${fileNameSuffix}${path.extname(file.originalname)}`);
         }
       }
-    });
-  }
+    }
+  });
+
+  const upload = multer({ storage: storage });
+  const fileUploader = upload.single('image_name');
+
+  fileUploader(req, res, (err) => {
+    if (err) {
+      res.status(500).send(`Problem while Uploading file: ${err}`);
+    } else {
+      const updatedServiceLine = req.body;
+      
+      if (req.user.role !== 'administrator') {
+        const checkQuery = `SELECT line_of_business_id FROM ${serviceLineTable} WHERE service_line_id = ?`;
+        sql.query(checkQuery, [id], (err, rows) => {
+          if (err) {
+            console.log("error: ", err);
+            return res.status(500).send(`Problem while checking service line access. ${err}`);
+          }
+          
+          if (rows.length === 0) {
+            return res.status(404).send("Service Line not found");
+          }
+          
+          if (rows[0].line_of_business_id != req.user.line_of_business_id) {
+            return res.status(403).send("Non administrator users can only update service lines in their own line of business");
+          }
+          
+          if (updatedServiceLine.line_of_business_id && updatedServiceLine.line_of_business_id != req.user.line_of_business_id) {
+            return res.status(403).send("Non administrator users cannot change service line's line of business");
+          }
+          
+          proceedWithUpdate();
+        });
+      } else {
+        proceedWithUpdate();
+      }
+      
+      function proceedWithUpdate() {
+        if (req.file) {
+          updatedServiceLine['image_name'] = req.file.filename;
+        }
+        
+        delete(updatedServiceLine.image_file_name);
+        
+        const updateQuery = `UPDATE ${serviceLineTable} set ? WHERE service_line_id = ?`;
+        sql.query(updateQuery,[updatedServiceLine, id], (err, success) => {
+          if (err) {
+            console.log("error: ", err);
+            res.status(500).send(`Problem while Updating the ${serviceLineTable} with ID: ${id}. ${err}`);
+          } else {
+            if (success.affectedRows == 1){
+              console.log(`${serviceLineTable} UPDATED:` , success)
+              updatedServiceLine.service_line_id = parseInt(id);
+              const response = {updatedServiceLine, user: req.user}
+              res.status(200).send(response);
+            } else {
+              res.status(404).send(`Record not found with Service Line ID: ${id}`);
+            }
+          }
+        });
+      }
+    }
+  });
 };
 
 const erase = (req, res) => {
