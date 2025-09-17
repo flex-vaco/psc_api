@@ -101,11 +101,16 @@ const search = (req, res) => {
     const userLineOfBusinessId = req.user.line_of_business_id;
     
     let query = `SELECT emp.*, 
-                  COALESCE(SUM(ea.hours_per_day) * 5, 0) AS alc_per_week
+                  COALESCE(SUM(ea.hours_per_day) * 5, 0) AS alc_per_week,
+                  GROUP_CONCAT(DISTINCT ca.name) AS capability_areas
                   FROM ${empTable} emp
                   LEFT JOIN employee_project_allocations ea
                   ON ea.emp_id = emp.emp_id 
-                  AND CURDATE() BETWEEN ea.start_date AND ea.end_date     
+                  AND CURDATE() BETWEEN ea.start_date AND ea.end_date
+                  LEFT JOIN ${empCapabilityAreasTable} eca
+                  ON eca.emp_id = emp.emp_id
+                  LEFT JOIN capability_area ca
+                  ON ca.capability_area_id = eca.capability_area_id     
                   WHERE 1 = 1`;
     
     // Filter by line of business if user is not administrator
@@ -130,11 +135,8 @@ const search = (req, res) => {
     if (empAvailability) {
       query = query + ` HAVING (40 - COALESCE(alc_per_week, 0)) >= ${empAvailability}`;
     }
-
-    
-    
-
-    sql.query(query, (err, rows) => {
+  
+    sql.query(query, (err, rows) => { 
       if (err) {
         console.log("error: ", err);
         return res.status(500).send(`There was a problem finding the employee. ${err}`);
@@ -143,13 +145,36 @@ const search = (req, res) => {
             let records = rows.filter((row)=>{
                                         let found = false;
                                         empSkills.forEach((empSkill) => {
-                                             let primarySkillList = row.primary_skills.split(',');
-                                             primarySkillList.filter((skill)=> {
+                                             // Check capability_areas
+                                             if (row.capability_areas) {
+                                               let capabilityAreaList = row.capability_areas.split(',');
+                                               capabilityAreaList.forEach((capabilityArea)=> {
+                                                    if (capabilityArea.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
+                                                      found = true;
+                                                      return found;
+                                                    }
+                                               })
+                                             }
+                                             // Check primary_skills
+                                             if (row.primary_skills) {
+                                               let primarySkillList = row.primary_skills.split(',');
+                                               primarySkillList.forEach((skill)=> {
                                                     if (skill.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
                                                       found = true;
                                                       return found;
                                                     }
-                                             })
+                                               })
+                                             }
+                                             // Check secondary_skills
+                                             if (row.secondary_skills) {
+                                               let secondarySkillList = row.secondary_skills.split(',');
+                                               secondarySkillList.forEach((skill)=> {
+                                                    if (skill.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
+                                                      found = true;
+                                                      return found;
+                                                    }
+                                               })
+                                             }
                                         }) 
                                         return found;                                                                      
                                       })
@@ -185,7 +210,6 @@ const create = (req, res) => {
   
   multipleUpload(req,res,function(err) {
     if(req.files) {
-      console.log(req);
       newEmployee = req.body;
       newEmployee['resume'] = req.files['resume'][0]['filename'];
       newEmployee['profile_picture'] = req.files['profile_picture'][0]['filename'];
@@ -277,7 +301,6 @@ const update = (req, res) => {
       }
     },
     filename: (req, file, cb) => {
-      console.log("Insidee STORAGE ", req.body.profile_pic_file_name, req.body.resume_file_name);
       if (file.fieldname === "resume") {
         //Use the exisitng file-name if it has one
         if (req.body.resume_file_name && ![null, 'null'].includes(req.body.resume_file_name)) {
@@ -404,7 +427,6 @@ const erase = (req, res) => {
     } else {
       //console.log("DEL: ", succeess)
       if (succeess.affectedRows == 1){
-        console.log(`${empTable} DELETED:` , succeess)
         //updatedEmployee.emp_id = parseInt(emp_id);
         res.status(200).send({msg:`Deleted row from ${empTable} with ID: ${emp_id}`, user: req.user});
       } else {

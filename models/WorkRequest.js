@@ -367,7 +367,6 @@ const update = (req, res) => {
             resourcesData.forEach(data => {
               sql.query(resourcesQuery, [data], (err) => {
                 if (err) console.log("Error updating resource:", err);
-                else console.log("Resource inserted successfully:", data);
               });
             });
           });
@@ -385,13 +384,11 @@ const update = (req, res) => {
               offshore_lead_id: leadId
             }));
             
-            console.log("Inserting offshore leads data:", offshoreLeadsData);
             
             const offshoreLeadsQuery = `INSERT INTO ${workRequestOffshoreLeadsTable} SET ?`;
             offshoreLeadsData.forEach(data => {
               sql.query(offshoreLeadsQuery, [data], (err) => {
                 if (err) console.log("Error updating offshore lead:", err);
-                else console.log("Offshore lead inserted successfully:", data);
               });
             });
           });
@@ -425,7 +422,6 @@ const erase = (req, res) => {
       res.status(500).send(`Problem while Deleting the ${workRequestTable} with ID: ${id}. ${err}`);
     } else {
       if (success.affectedRows == 1){
-        console.log(`${workRequestTable} DELETED:` , success)
         res.status(200).send({msg: `Deleted row from ${workRequestTable} with ID: ${id}`, user: req.user});
       } else {
         res.status(404).send(`Record not found with Work Request ID: ${id}`);
@@ -441,7 +437,6 @@ const getResourcesByCapabilityAreas = (req, res) => {
   }
   
   const { capabilityAreaIds } = req.body;
-  console.log("capabilityAreaIds: ", capabilityAreaIds);
   if (!capabilityAreaIds || capabilityAreaIds.length === 0) {
     return res.status(400).send({error: true, message: "Capability area IDs are required"});
   }
@@ -471,7 +466,6 @@ const getResourcesByCapabilityAreas = (req, res) => {
   }
 
   sql.query(query, queryParams, (err, results) => {
-    console.log("results: ", queryParams);
     if (err) {
       console.log("Error fetching resources by capability areas:", err);
       return res.status(500).send({error: true, message: 'Error fetching resources'});

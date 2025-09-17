@@ -75,7 +75,6 @@ const update = (req, res) => {
       res.status(500).send(`Problem while Updating the ${officeLocationTable} with ID: ${office_location_id}. ${err}`);
     } else {
       if (succeess.affectedRows == 1){
-        console.log(`${officeLocationTable} UPDATED:` , succeess)
         updatedLocation.office_location_id = parseInt(office_location_id);
         const response = {updatedLocation, user: req.user}
         res.status(200).send(response);
