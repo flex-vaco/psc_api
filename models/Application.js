@@ -18,6 +18,7 @@ const getCategories = (req, res) => {
 
 const getServiceLinesForHome = (req, res) => {
   const user = req.user;
+  console.log("getServiceLinesForHome", user.role);
   let query = `SELECT sl.*, lb.name as line_of_business_name FROM service_line sl 
                LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.line_of_business_id`;
   let whereConditions = [];
@@ -25,7 +26,7 @@ const getServiceLinesForHome = (req, res) => {
   if (user.role === 'administrator') {
     // Administrator sees all service lines
     query += ` ORDER BY sl.name`;
-  } else if (user.role === 'project_manager' || user.role === 'lob_admin') {
+  } else if (user.role === 'project_manager' || user.role === 'lobadmin') {
     
     whereConditions.push(`sl.line_of_business_id = ?`);
     params.push(user.line_of_business_id);
