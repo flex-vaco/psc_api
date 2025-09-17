@@ -218,7 +218,6 @@ const update = (req, res) => {
             res.status(500).send(`Problem while Updating the ${serviceLineTable} with ID: ${id}. ${err}`);
           } else {
             if (success.affectedRows == 1){
-              console.log(`${serviceLineTable} UPDATED:` , success)
               updatedServiceLine.service_line_id = parseInt(id);
               const response = {updatedServiceLine, user: req.user}
               res.status(200).send(response);
@@ -273,7 +272,6 @@ const erase = (req, res) => {
         res.status(500).send(`Problem while Deleting the ${serviceLineTable} with ID: ${id}. ${err}`);
       } else {
         if (success.affectedRows == 1){
-          console.log(`${serviceLineTable} DELETED:` , success)
           res.status(200).send({msg: `Deleted row from ${serviceLineTable} with ID: ${id}`, user: req.user});
         } else {
           res.status(404).send(`Record not found with Service Line ID: ${id}`);

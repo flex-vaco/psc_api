@@ -75,7 +75,6 @@ const update = (req, res) => {
       res.status(500).send(`Problem while Updating the ${clientTable} with ID: ${client_id}. ${err}`);
     } else {
       if (succeess.affectedRows == 1){
-        console.log(`${clientTable} UPDATED:` , succeess)
         updatedClient.client_id = parseInt(client_id);
         const response = {updatedClient, user: req.user}
         res.status(200).send(response);
@@ -104,7 +103,6 @@ const erase = (req, res) => {
     } else {
       //console.log("DEL: ", succeess)
       if (succeess.affectedRows == 1){
-        console.log(`${clientTable} DELETED:` , succeess)
         res.status(200).send({msg: `Deleted row from ${clientTable} with ID: ${client_id}`, user: req.user});
       } else {
         res.status(404).send(`Record not found with Client Details ID: ${client_id}`);

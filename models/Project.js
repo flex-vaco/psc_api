@@ -172,7 +172,6 @@ const update = (req, res) => {
         res.status(500).send(`Problem while Updating the ${projectTable} with ID: ${project_id}. ${err}`);
       } else {
         if (succeess.affectedRows == 1){
-          console.log(`${projectTable} UPDATED:` , succeess)
           updatedProject.project_id = parseInt(project_id);
           const response = {updatedProject, user: req.user}
           res.status(200).send(response);
@@ -202,7 +201,6 @@ const erase = (req, res) => {
     } else {
       //console.log("DEL: ", succeess)
       if (succeess.affectedRows == 1){
-        console.log(`${projectTable} DELETED:` , succeess)
         //updatedProject.project_id = parseInt(project_id);
         res.status(200).send({msg: `Deleted row from ${projectTable} with ID: ${project_id}`, user: req.user});
       } else {

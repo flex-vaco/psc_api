@@ -18,7 +18,6 @@ const getCategories = (req, res) => {
 
 const getServiceLinesForHome = (req, res) => {
   const user = req.user;
-  console.log("getServiceLinesForHome", user.role);
   let query = `SELECT sl.*, lb.name as line_of_business_name FROM service_line sl 
                LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.line_of_business_id`;
   let whereConditions = [];
@@ -169,13 +168,11 @@ const getChatResp =  (req, res) => {
       const message = req.query.chatMessage;
        
         ai.getAIGeneratedQuery(message).then((query) => {
-          console.log(query);
           sql.query(query, (err, rows) => {
             if (err) {
               console.log("error: ", err);
               return res.status(500).send(`There was a problem getting query. ${err}`);
             }
-            console.log(rows);
             return res.status(200).send({query:query, records:rows});
           });
         //return res.status(200).send(result);

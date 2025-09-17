@@ -57,7 +57,6 @@ const getWorkingDays = (startDate, endDate) => {
 
 // Get filter options
 const getFilterOptions = (req, res) => {
-  console.log("getFilterOptions", req.user.role);
   if (!userACL.hasEmployeeReadAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
     return res.status(404).send({error: true, message: msg});
@@ -319,7 +318,6 @@ const getUtilizationTrends = (req, res) => {
     ORDER BY lb.name, period
   `;
 
-  console.log("utilizationTrendsQuery: ", utilizationTrendsQuery);
   
   const queryParams = [filterStart, filterEnd, ...params];
   

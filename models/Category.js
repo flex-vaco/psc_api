@@ -50,10 +50,8 @@ const create = (req, res) => {
         if (err) {
           res.status(500).send(`Problem while Uploading file: ${err}`);
         } else {
-            console.log(req);
           if (req.file) {
             newCategory = req.body;
-            console.log(newCategory);
             newCategory['image_name'] = req.file.filename;
             const insertQuery = `INSERT INTO ${category} set ?`;
             sql.query(insertQuery, [newCategory], (err, success) => {

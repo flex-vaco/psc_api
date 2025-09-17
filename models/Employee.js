@@ -210,7 +210,6 @@ const create = (req, res) => {
   
   multipleUpload(req,res,function(err) {
     if(req.files) {
-      console.log(req);
       newEmployee = req.body;
       newEmployee['resume'] = req.files['resume'][0]['filename'];
       newEmployee['profile_picture'] = req.files['profile_picture'][0]['filename'];
@@ -302,7 +301,6 @@ const update = (req, res) => {
       }
     },
     filename: (req, file, cb) => {
-      console.log("Insidee STORAGE ", req.body.profile_pic_file_name, req.body.resume_file_name);
       if (file.fieldname === "resume") {
         //Use the exisitng file-name if it has one
         if (req.body.resume_file_name && ![null, 'null'].includes(req.body.resume_file_name)) {
@@ -429,7 +427,6 @@ const erase = (req, res) => {
     } else {
       //console.log("DEL: ", succeess)
       if (succeess.affectedRows == 1){
-        console.log(`${empTable} DELETED:` , succeess)
         //updatedEmployee.emp_id = parseInt(emp_id);
         res.status(200).send({msg:`Deleted row from ${empTable} with ID: ${emp_id}`, user: req.user});
       } else {

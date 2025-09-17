@@ -184,7 +184,6 @@ const update = (req, res) => {
         res.status(500).send(`Problem while Updating the ${capabilityAreaTable} with ID: ${id}. ${err}`);
       } else {
         if (success.affectedRows == 1){
-          console.log(`${capabilityAreaTable} UPDATED:` , success)
           updatedCapabilityArea.capability_area_id = parseInt(id);
           const response = {updatedCapabilityArea, user: req.user}
           res.status(200).send(response);
@@ -237,7 +236,6 @@ const erase = (req, res) => {
         res.status(500).send(`Problem while Deleting the ${capabilityAreaTable} with ID: ${id}. ${err}`);
       } else {
         if (success.affectedRows == 1){
-          console.log(`${capabilityAreaTable} DELETED:` , success)
           res.status(200).send({msg: `Deleted row from ${capabilityAreaTable} with ID: ${id}`, user: req.user});
         } else {
           res.status(404).send(`Record not found with Capability Area ID: ${id}`);

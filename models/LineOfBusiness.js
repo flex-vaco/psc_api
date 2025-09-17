@@ -75,7 +75,6 @@ const update = (req, res) => {
       res.status(500).send(`Problem while Updating the ${lineOfBusinessTable} with ID: ${id}. ${err}`);
     } else {
       if (success.affectedRows == 1){
-        console.log(`${lineOfBusinessTable} UPDATED:` , success)
         updatedLineOfBusiness.line_of_business_id = parseInt(id);
         const response = {updatedLineOfBusiness, user: req.user}
         res.status(200).send(response);
@@ -103,7 +102,6 @@ const erase = (req, res) => {
       res.status(500).send(`Problem while Deleting the ${lineOfBusinessTable} with ID: ${id}. ${err}`);
     } else {
       if (success.affectedRows == 1){
-        console.log(`${lineOfBusinessTable} DELETED:` , success)
         res.status(200).send({msg: `Deleted row from ${lineOfBusinessTable} with ID: ${id}`, user: req.user});
       } else {
         res.status(404).send(`Record not found with Line of Business ID: ${id}`);
