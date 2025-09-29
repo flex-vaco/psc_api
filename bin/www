@@ -96,11 +96,10 @@ app.get('/api/microsoftAuth/microsoft', (req, res) => {
             `response_mode=query&` +
             `scope=openid%20profile%20email&` +
             `state=12345`;
-        console.log("MS Auth URL generated:", authUrl);
-        res.json({ authUrl });
+        return res.json({ authUrl });
     } catch (error) {
         console.error('Error generating auth URL:', error);
-        res.status(500).json({ 
+        return res.status(500).json({ 
             success: false, 
             message: 'Error initiating Microsoft login' 
         });
