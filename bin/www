@@ -83,6 +83,11 @@ app.use('/api/userRoles', userRolesRouter);
 const coiExtractRouter = require('../routes/coiExtract');
 app.use('/api/coiExtract', coiExtractRouter);
 
+const authRouter = require('../routes/auth');
+app.use('/api/auth', authRouter);
+const microsoftAuthRouter = require('../routes/microsoftAuth');
+app.use('/api/microsoftAuth', microsoftAuthRouter);
+
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
