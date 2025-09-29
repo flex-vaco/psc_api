@@ -73,12 +73,12 @@ router.get('/redirect', async (req, res) => {
         sql.query('SELECT * FROM users WHERE email = ?', [email], (err, rows) => {
             if (err) {
                 console.error('Database error:', err);
-                return res.redirect(`${BASE_URL}/login?error=Database error occurred during login`);
+                return res.redirect(`${BASE_URL}/login?error=Unknown Error. Please login again`);
             }
 
             if (rows.length === 0) {
                 // User not found - redirect to login with error message
-                return res.redirect(`${BASE_URL}/login?error=User not found. Please contact your administrator to create an account.`);
+                return res.redirect(`${BASE_URL}/login?error=Un-registered User! Please contact Flex Administrator for access.`);
             }
 
             const user = rows[0];

@@ -87,7 +87,6 @@ const authRouter = require('../routes/auth');
 app.use('/api/auth/azuread', authRouter);
 
 app.get('/api/microsoftAuth/microsoft', (req, res) => {
-    console.log("Microsoft OAuth endpoint hit");
     try {
         const authUrl = `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID}/oauth2/v2.0/authorize?` +
             `client_id=${process.env.MICROSOFT_CLIENT_ID}&` +
