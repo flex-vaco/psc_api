@@ -33,10 +33,10 @@ router.get('/microsoft', (req, res) => {
 });
 
 // Azure AD redirect handler
-router.get('/azuread/redirect', async (req, res) => {
+router.get('/redirect', async (req, res) => {
     try {
         const { code, error } = req.query;
-        
+        console.log("Azure AD redirect hit with code:", code, "and error:", error);
         if (error) {
             return res.redirect(`${BASE_URL}/login?error=` + encodeURIComponent(error));
         }
@@ -51,7 +51,7 @@ router.get('/azuread/redirect', async (req, res) => {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
                 client_id: MICROSOFT_CONFIG.clientId,
-                client_secret: process.env.MICROSOFT_CLIENT_SECRET,
+                // client_secret: process.env.MICROSOFT_CLIENT_SECRET,
                 code: code,
                 redirect_uri: MICROSOFT_CONFIG.redirectUri,
                 grant_type: 'authorization_code'
@@ -59,7 +59,7 @@ router.get('/azuread/redirect', async (req, res) => {
         });
 
         const tokens = await tokenResponse.json();
-        
+        console.log("Tokens received from Microsoft:", tokens);
         if (tokens.error) {
             return res.redirect(`${BASE_URL}/login?error=` + encodeURIComponent(tokens.error_description || tokens.error));
         }
@@ -71,7 +71,7 @@ router.get('/azuread/redirect', async (req, res) => {
         
         const userProfile = await userResponse.json();
         const email = userProfile.mail || userProfile.userPrincipalName;
-
+        console.log("User profile received from Microsoft:", userProfile);
         // Check if user exists in database
         sql.query('SELECT * FROM users WHERE email = ?', [email], (err, rows) => {
             if (err) {
