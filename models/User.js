@@ -499,8 +499,8 @@ const getManagersByLineOfBusiness = (req, res) => {
   if (!line_of_business_id) {
     return res.status(500).send("Line of Business ID is required");
   }
-  
-  const query = `SELECT * FROM ${usersTable} WHERE (role = 'manager' OR role = 'offshorelead') AND line_of_business_id = ?`;
+
+  const query = `SELECT * FROM ${usersTable} WHERE (role = 'manager' OR role = 'off_shore_lead') AND line_of_business_id = ?`;
   sql.query(query, [line_of_business_id], (err, rows) => {
     if (err) {
       console.log("error: ", err);
