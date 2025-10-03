@@ -168,7 +168,7 @@ const create = (req, res) => {
             });
           }
           
-          if ((newUser.role === APP_CONSTANTS.USER_ROLES.OFF_SHORE_LEAD) && newUser.service_line_ids) {
+          if ((newUser.role === APP_CONSTANTS.USER_ROLES.OFF_SHORE_LEAD || newUser.role === APP_CONSTANTS.USER_ROLES.MANAGER) && newUser.service_line_ids) {
             offshoreLeadServiceLineQry = `INSERT INTO offshore_lead_service_lines (offshore_lead_id, service_line_id) VALUES ?`;
             newUser.service_line_ids.forEach(sl_id => {
               offshoreLeadServiceLines.push(sl_id);
@@ -334,7 +334,7 @@ const update = (req, res) => {
     });
   }
   
-  if ((updatedUser.role === APP_CONSTANTS.USER_ROLES.OFF_SHORE_LEAD) && updatedUser.service_line_ids) {
+  if ((updatedUser.role === APP_CONSTANTS.USER_ROLES.OFF_SHORE_LEAD || updatedUser.role === APP_CONSTANTS.USER_ROLES.MANAGER) && updatedUser.service_line_ids) {
     offshoreLeadServiceLineQry = `INSERT INTO offshore_lead_service_lines (offshore_lead_id, service_line_id) VALUES ? 
 	                        ON DUPLICATE KEY UPDATE 
 	                        service_line_id = VALUES(service_line_id),
@@ -499,8 +499,8 @@ const getManagersByLineOfBusiness = (req, res) => {
   if (!line_of_business_id) {
     return res.status(500).send("Line of Business ID is required");
   }
-  
-  const query = `SELECT * FROM ${usersTable} WHERE (role = 'manager' OR role = 'offshorelead') AND line_of_business_id = ?`;
+
+  const query = `SELECT * FROM ${usersTable} WHERE (role = 'manager' OR role = 'off_shore_lead') AND line_of_business_id = ?`;
   sql.query(query, [line_of_business_id], (err, rows) => {
     if (err) {
       console.log("error: ", err);
@@ -684,6 +684,34 @@ const getOffshoreLeadsByServiceLine = (req, res) => {
   });
 };
 
+const getManagersByServiceLine = (req, res) => {
+  if (!userACL.hasUserReadAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
+  
+  const serviceLineId = req.params.serviceLineId;
+  if (!serviceLineId) {
+    return res.status(400).send({error: true, message: "Service Line ID is required"});
+  }
+  
+  const query = `
+    SELECT DISTINCT u.user_id, u.first_name, u.last_name, u.email, u.role, u.line_of_business_id
+    FROM ${usersTable} u
+    INNER JOIN offshore_lead_service_lines olsl ON u.user_id = olsl.offshore_lead_id
+    WHERE olsl.service_line_id = ? AND u.role = 'manager'
+    ORDER BY u.first_name, u.last_name
+  `;
+  
+  sql.query(query, [serviceLineId], (err, rows) => {
+    if (err) {
+      console.log("error: ", err);
+      return res.status(500).send(`There was a problem getting managers for service line. ${err}`);
+    }
+    return res.status(200).send({managers: rows, user: req.user});
+  });
+};
+
 module.exports = {
   findAll,
   findById,
@@ -698,6 +726,7 @@ module.exports = {
   getManagersByLineOfBusiness,
   findByLineOfBusiness,
   getOffshoreLeadsByServiceLine,
+  getManagersByServiceLine,
   forgotPassword,
   resetPasswordRequest,
 }

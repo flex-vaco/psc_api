@@ -30,7 +30,7 @@ const getServiceLinesForHome = (req, res) => {
     whereConditions.push(`sl.line_of_business_id = ?`);
     params.push(user.line_of_business_id);
     query += ` WHERE ${whereConditions.join(' AND ')} ORDER BY sl.name`;
-  } else if (user.role === 'off_shore_lead') {
+  } else if (user.role === 'off_shore_lead' || user.role === 'manager') {
     query = `SELECT sl.*, lb.name as line_of_business_name FROM service_line sl 
              LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.line_of_business_id
              INNER JOIN offshore_lead_service_lines olsl ON sl.service_line_id = olsl.service_line_id

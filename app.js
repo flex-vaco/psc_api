@@ -23,6 +23,8 @@ const capabilityAreaRouter = require('./routes/capabilityArea');
 const workRequestRouter = require('./routes/workRequest');
 const userRolesRouter = require('./routes/userRoles');
 const coiExtractRouter = require('./routes/coiExtract');
+const authRouter = require('./routes/auth');
+const microsoftAuthRouter = require('./routes/microsoftAuth');
 const cors = require('cors');
 const app = express();
 
@@ -63,6 +65,8 @@ app.use('/capabilityArea', capabilityAreaRouter);
 app.use('/workRequest', workRequestRouter);
 app.use('/userRoles', userRolesRouter);
 app.use('/coiExtract', coiExtractRouter);
+app.use('/auth', authRouter);
+app.use('/microsoftAuth', microsoftAuthRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

@@ -19,6 +19,7 @@ router.post("/resetPassword/:user_id", verifyToken, User.resetPassword);
 router.post("/getUserByRole", verifyToken, User.getUserByRole);
 router.post("/getManagersByLineOfBusiness", verifyToken, User.getManagersByLineOfBusiness);
 router.get("/offshoreLeads/serviceLine/:serviceLineId", verifyToken, User.getOffshoreLeadsByServiceLine);
+router.get("/managers/serviceLine/:serviceLineId", verifyToken, User.getManagersByServiceLine);
 router.post("/forgotPassword", User.forgotPassword);
 router.post("/updatePassword", User.resetPasswordRequest);
 module.exports = router;

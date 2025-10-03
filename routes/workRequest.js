@@ -16,6 +16,7 @@ router.get("/delete/:id", verifyToken, WorkRequest.erase);
 router.post("/resourcesByCapabilityAreas", verifyToken, WorkRequest.getResourcesByCapabilityAreas);
 router.get("/capabilityAreasByLineOfBusiness/:lineOfBusinessId", verifyToken, WorkRequest.getCapabilityAreasByLineOfBusiness);
 router.get("/offshoreLeads/serviceLine/:serviceLineId", verifyToken, WorkRequest.getOffshoreLeadsByServiceLine);
+router.get("/managers/serviceLine/:serviceLineId", verifyToken, WorkRequest.getManagersByServiceLine);
 router.get("/offshoreLead/assigned", verifyToken, WorkRequest.getWorkRequestsByOffshoreLead);
 
 // New routes for offshore lead workflow
