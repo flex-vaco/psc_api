@@ -39,15 +39,15 @@ const findAll = (req, res) => {
   
   if (req.user.role === 'administrator') {
     // Admin can see all requests - no additional filtering needed
-  } else if (req.user.role === 'offshore_lead') {
-    // Offshore lead can only see requests assigned to them
+  } else if (req.user.role === 'offshore_lead' || req.user.role === 'manager') {
+    // Offshore lead and manager can only see requests assigned to them
     whereConditions.push(`EXISTS (SELECT 1 FROM ${workRequestOffshoreLeadsTable} wrol WHERE wrol.work_request_id = wr.work_request_id AND wrol.offshore_lead_id = ${req.user.user_id})`);
     whereConditions.push(`wr.line_of_business_id = ${req.user.line_of_business_id}`);
-  } else if (req.user.role === 'project_manager') {
-    // Project manager can only see requests made by them
+  } else if (req.user.role === 'project_manager' || req.user.role === 'producer') {
+    // Project manager and producer can only see requests made by them
     whereConditions.push(`wr.submitted_by = ${req.user.user_id}`);
   } else {
-    // Other roles (manager, producer, lobadmin) - filter by line of business
+    // Other roles (lobadmin) - filter by line of business
     whereConditions.push(`wr.line_of_business_id = ${req.user.line_of_business_id}`);
   }
   
@@ -98,7 +98,7 @@ const findById = (req, res) => {
     }
     
     // Add offshore lead filter
-    if (req.user.role === 'offshore_lead') {
+    if (req.user.role === 'offshore_lead' || req.user.role === 'manager') {
       query += ` AND EXISTS (SELECT 1 FROM ${workRequestOffshoreLeadsTable} wrol WHERE wrol.work_request_id = wr.work_request_id AND wrol.offshore_lead_id = ?)`;
       params.push(req.user.user_id);
     }
@@ -531,6 +531,34 @@ const getOffshoreLeadsByServiceLine = (req, res) => {
   });
 };
 
+const getManagersByServiceLine = (req, res) => {
+  if (!userACL.hasWorkRequestReadAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
+  
+  const serviceLineId = req.params.serviceLineId;
+  if (!serviceLineId) {
+    return res.status(400).send({error: true, message: "Service Line ID is required"});
+  }
+  
+  const query = `
+    SELECT DISTINCT u.user_id, u.first_name, u.last_name, u.email, u.role, u.line_of_business_id
+    FROM users u
+    INNER JOIN offshore_lead_service_lines olsl ON u.user_id = olsl.offshore_lead_id
+    WHERE olsl.service_line_id = ? AND u.role = 'manager'
+    ORDER BY u.first_name, u.last_name
+  `;
+  
+  sql.query(query, [serviceLineId], (err, rows) => {
+    if (err) {
+      console.log("error: ", err);
+      return res.status(500).send(`There was a problem getting managers for service line. ${err}`);
+    }
+    return res.status(200).send({managers: rows, user: req.user});
+  });
+};
+
 const getWorkRequestsByOffshoreLead = (req, res) => {
   if (!userACL.hasOffshoreLeadWorkRequestAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
@@ -769,6 +797,7 @@ module.exports = {
   getResourcesByCapabilityAreas,
   getCapabilityAreasByLineOfBusiness,
   getOffshoreLeadsByServiceLine,
+  getManagersByServiceLine,
   getWorkRequestsByOffshoreLead,
   getFilteredResourcesForOffshoreLead,
   updateWorkRequestStatus,

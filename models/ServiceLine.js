@@ -308,11 +308,39 @@ const findByOffshoreLead = (req, res) => {
   });
 };
 
+const findByManager = (req, res) => {
+  if (!userACL.hasOffshoreLeadServiceLineAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
+  
+  const managerId = req.user.user_id;
+  if (!managerId) {
+    return res.status(400).send("Manager ID required");
+  }
+  
+  const query = `SELECT sl.*, lb.name as line_of_business_name 
+                 FROM ${serviceLineTable} sl 
+                 LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.line_of_business_id
+                 INNER JOIN offshore_lead_service_lines olsl ON sl.service_line_id = olsl.service_line_id
+                 WHERE olsl.offshore_lead_id = ? 
+                 ORDER BY sl.name`;
+  
+  sql.query(query, [managerId], (err, rows) => {
+    if (err) {
+      console.log("error: ", err);
+      return res.status(500).send(`There was a problem getting service lines for manager. ${err}`);
+    }
+    return res.status(200).send({serviceLines: rows, user: req.user});
+  });
+};
+
 module.exports = {
   findAll,
   findById,
   findByLineOfBusiness,
   findByOffshoreLead,
+  findByManager,
   create,
   update,
   erase
