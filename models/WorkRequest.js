@@ -613,20 +613,22 @@ const getFilteredResourcesForOffshoreLead = (req, res) => {
     return res.status(400).send({error: true, message: "Capability area IDs are required"});
   }
   
-  // Build query to get employees who have the specified capability areas
+  // Build query to get employees who have the specified capability areas and are under offshore lead's service lines
   const query = `
     SELECT DISTINCT ed.*, 
            GROUP_CONCAT(DISTINCT ca.name) as capability_areas
     FROM employee_details ed
     INNER JOIN employee_capability_areas eca ON ed.emp_id = eca.emp_id
     LEFT JOIN capability_area ca ON eca.capability_area_id = ca.capability_area_id
+    INNER JOIN offshore_lead_service_lines olsl ON ed.service_line_id = olsl.service_line_id
     WHERE eca.capability_area_id IN (${capabilityAreaIds.map(() => '?').join(',')})
       AND ed.line_of_business_id = ?
+      AND olsl.offshore_lead_id = ?
     GROUP BY ed.emp_id
     ORDER BY ed.first_name, ed.last_name
   `;
 
-  const queryParams = [...capabilityAreaIds, req.user.line_of_business_id];
+  const queryParams = [...capabilityAreaIds, req.user.line_of_business_id, req.user.user_id];
 
   sql.query(query, queryParams, (err, results) => {
     if (err) {

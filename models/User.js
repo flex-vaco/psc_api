@@ -99,6 +99,23 @@ const findById = (req, res) => {
             return res.status(200).send({ user: rows[0] });
           }
         })
+      } else if (rows[0]?.role === APP_CONSTANTS.USER_ROLES.OFF_SHORE_LEAD || rows[0]?.role === APP_CONSTANTS.USER_ROLES.MANAGER) {
+        const serviceLineQuery = `
+          SELECT sl.service_line_id, sl.name 
+          FROM service_line sl 
+          INNER JOIN offshore_lead_service_lines olsl ON sl.service_line_id = olsl.service_line_id 
+          WHERE olsl.offshore_lead_id = ?
+        `;
+        
+        sql.query(serviceLineQuery, [userId], (serviceLineErr, serviceLineRows) => {
+          if (serviceLineErr) {
+            console.log("error fetching service lines: ", serviceLineErr);
+            return res.status(500).send(`There was a problem finding the User's service lines. ${serviceLineErr}`);
+          }
+          
+          rows[0].offshore_lead_service_lines = serviceLineRows;
+          return res.status(200).send({user: rows[0]});
+        });
       } else {
         return res.status(200).send({user: rows[0]});
       }
