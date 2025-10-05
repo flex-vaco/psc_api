@@ -21,20 +21,31 @@ const findAll = (req, res) => {
                LEFT JOIN service_line sl ON e.service_line_id = sl.service_line_id
                LEFT JOIN line_of_business lb ON e.line_of_business_id = lb.line_of_business_id`;
   let whereConditions = [];
+  let queryParams = [];
   
   if (managerEmail) {
-    whereConditions.push(`e.manager_email = '${managerEmail}'`);
+    whereConditions.push(`e.manager_email = ?`);
+    queryParams.push(managerEmail);
   }
   
   if (userRole !== 'administrator' && userLineOfBusinessId) {
-    whereConditions.push(`e.line_of_business_id = ${userLineOfBusinessId}`);
+    if (userRole === 'off_shore_lead' || userRole === 'manager') {
+      // For offshore leads and managers, filter by their assigned service lines
+      query += ` INNER JOIN offshore_lead_service_lines olsl ON e.service_line_id = olsl.service_line_id`;
+      whereConditions.push(`olsl.offshore_lead_id = ?`);
+      queryParams.push(req.user.user_id);
+    } else {
+      // For other roles, filter by line of business
+      whereConditions.push(`e.line_of_business_id = ?`);
+      queryParams.push(userLineOfBusinessId);
+    }
   }
   
   if (whereConditions.length > 0) {
     query += ` WHERE ${whereConditions.join(' AND ')}`;
   }
   
-  sql.query(query, (err, rows) => {
+  sql.query(query, queryParams, (err, rows) => {
     if (err) {
       console.log("error: ", err);
       return res.status(500).send(`There was a problem getting employees. ${err}`);
@@ -110,12 +121,20 @@ const search = (req, res) => {
                   LEFT JOIN ${empCapabilityAreasTable} eca
                   ON eca.emp_id = emp.emp_id
                   LEFT JOIN capability_area ca
-                  ON ca.capability_area_id = eca.capability_area_id     
-                  WHERE 1 = 1`;
+                  ON ca.capability_area_id = eca.capability_area_id`;
     
-    // Filter by line of business if user is not administrator
+    // Filter by line of business or service lines if user is not administrator
     if (userRole !== 'administrator' && userLineOfBusinessId) {
-      query += ` AND emp.line_of_business_id = ${userLineOfBusinessId}`;
+      if (userRole === 'off_shore_lead' || userRole === 'manager') {
+        // For offshore leads and managers, filter by their assigned service lines
+        query += ` INNER JOIN offshore_lead_service_lines olsl ON emp.service_line_id = olsl.service_line_id`;
+        query += ` WHERE olsl.offshore_lead_id = ${req.user.user_id}`;
+      } else {
+        // For other roles, filter by line of business
+        query += ` WHERE emp.line_of_business_id = ${userLineOfBusinessId}`;
+      }
+    } else {
+      query += ` WHERE 1 = 1`;
     }
 
     if (empLocation) {
