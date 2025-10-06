@@ -2,7 +2,6 @@ const sql = require("../lib/db.js");
 const userACL = require('../lib/userACL.js');
 const APP_CONSTANTS = require('../lib/appConstants.js');
 
-// Helper function to get date ranges for presets
 const getDateRange = (preset) => {
   const today = new Date();
   const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -10,7 +9,7 @@ const getDateRange = (preset) => {
   switch (preset) {
     case 'next_8_weeks':
       const next8Weeks = new Date(startOfDay);
-      next8Weeks.setDate(next8Weeks.getDate() + 56); // 8 weeks
+      next8Weeks.setDate(next8Weeks.getDate() + 56);
       return { startDate: today.toISOString().split('T')[0], endDate: next8Weeks.toISOString().split('T')[0] };
     
     case 'last_7_days':
@@ -38,7 +37,6 @@ const getDateRange = (preset) => {
   }
 };
 
-// Helper function to get working days between two dates
 const getWorkingDays = (startDate, endDate) => {
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -46,7 +44,7 @@ const getWorkingDays = (startDate, endDate) => {
   
   while (start <= end) {
     const dayOfWeek = start.getDay();
-    if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Monday to Friday
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
       workingDays++;
     }
     start.setDate(start.getDate() + 1);
@@ -55,7 +53,6 @@ const getWorkingDays = (startDate, endDate) => {
   return workingDays;
 };
 
-// Get filter options
 const getFilterOptions = (req, res) => {
   if (!userACL.hasEmployeeReadAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
@@ -75,6 +72,7 @@ const getFilterOptions = (req, res) => {
       ...rows.map(row => ({ id: row.line_of_business_id, name: row.name }))
     ];
     
+    getServiceLinesForUser(req.user, (serviceLines) => {
     const datePresets = [
       { id: 'next_8_weeks', name: 'Next 8 Weeks' },
       { id: 'last_7_days', name: 'Last 7 Days' },
@@ -85,13 +83,59 @@ const getFilterOptions = (req, res) => {
     
     return res.status(200).send({
       verticals: verticals,
+        serviceLines: serviceLines,
       datePresets: datePresets,
       user: req.user
+    });
     });
   });
 };
 
-// Get dashboard metrics
+const getServiceLinesForUser = (user, callback) => {
+  let query;
+  let params = [];
+  
+  if (user.role === 'administrator') {
+    query = `SELECT sl.service_line_id, sl.name, sl.line_of_business_id, lb.name as line_of_business_name 
+             FROM service_line sl 
+             LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.line_of_business_id 
+             ORDER BY lb.name, sl.name`;
+  } else if (user.role === 'off_shore_lead' || user.role === 'manager') {
+    query = `SELECT sl.service_line_id, sl.name, sl.line_of_business_id, lb.name as line_of_business_name 
+             FROM service_line sl 
+             LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.line_of_business_id
+             INNER JOIN offshore_lead_service_lines olsl ON sl.service_line_id = olsl.service_line_id
+             WHERE olsl.offshore_lead_id = ? 
+             ORDER BY lb.name, sl.name`;
+    params = [user.user_id];
+  } else {
+    query = `SELECT sl.service_line_id, sl.name, sl.line_of_business_id, lb.name as line_of_business_name 
+             FROM service_line sl 
+             LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.line_of_business_id 
+             WHERE sl.line_of_business_id = ? 
+             ORDER BY sl.name`;
+    params = [user.line_of_business_id];
+  }
+  
+  sql.query(query, params, (err, rows) => {
+    if (err) {
+      console.log("error: ", err);
+      callback([]);
+    } else {
+      const serviceLines = [
+        { id: 'all', name: 'All', line_of_business_id: 'all' },
+        ...rows.map(row => ({ 
+          id: row.service_line_id, 
+          name: row.name, 
+          line_of_business_id: row.line_of_business_id,
+          line_of_business_name: row.line_of_business_name
+        }))
+      ];
+      callback(serviceLines);
+    }
+  });
+};
+
 const getDashboardMetrics = (req, res) => {
   if (!userACL.hasEmployeeReadAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
@@ -100,31 +144,35 @@ const getDashboardMetrics = (req, res) => {
 
   const { 
     vertical, 
+    serviceLine,
     datePreset, 
     startDate, 
     endDate,
     metricsVertical,
+    metricsServiceLine,
     metricsDatePreset,
     metricsStartDate,
     metricsEndDate,
     utilizationVertical,
+    utilizationServiceLine,
     utilizationDatePreset,
     utilizationStartDate,
     utilizationEndDate,
     allocationVertical,
+    allocationServiceLine,
     allocationDatePreset,
     allocationStartDate,
     allocationEndDate
   } = req.query;
   
-  // Helper function to get date range
   const getDateRangeForSection = (datePreset, startDate, endDate, defaultWeeks = 8) => {
-    if (datePreset && datePreset !== 'custom') {
+    const validDatePresets = ['next_8_weeks', 'last_7_days', 'last_month', 'year_to_date', 'last_quarter'];
+    
+    if (datePreset && validDatePresets.includes(datePreset)) {
       return getDateRange(datePreset);
     } else if (startDate && endDate) {
       return { startDate, endDate };
     } else {
-      // Default to specified weeks
       const today = new Date();
       const futureDate = new Date();
       futureDate.setDate(today.getDate() + (defaultWeeks * 7));
@@ -135,8 +183,7 @@ const getDashboardMetrics = (req, res) => {
     }
   };
 
-  // Helper function to build where conditions
-  const buildWhereConditions = (vertical, userRole, userLineOfBusinessId) => {
+  const buildWhereConditions = (vertical, serviceLine, userRole, userLineOfBusinessId) => {
     let whereConditions = [];
     let params = [];
     
@@ -148,22 +195,25 @@ const getDashboardMetrics = (req, res) => {
       params.push(userLineOfBusinessId);
     }
     
+    if (serviceLine && serviceLine !== 'all') {
+      whereConditions.push('e.service_line_id = ?');
+      params.push(serviceLine);
+    }
+    
     return {
       whereClause: whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '',
       params
     };
   };
 
-  // Get filters for each section
-  const metricsDateRange = getDateRangeForSection(metricsDatePreset, metricsStartDate, metricsEndDate, 8);
-  const utilizationDateRange = getDateRangeForSection(utilizationDatePreset, utilizationStartDate, utilizationEndDate, 8);
-  const allocationDateRange = getDateRangeForSection(allocationDatePreset, allocationStartDate, allocationEndDate, 8);
+  const metricsDateRange = getDateRangeForSection(metricsDatePreset || 'next_8_weeks', metricsStartDate, metricsEndDate, 8);
+  const utilizationDateRange = getDateRangeForSection(utilizationDatePreset || 'last_month', utilizationStartDate, utilizationEndDate, 8);
+  const allocationDateRange = getDateRangeForSection(allocationDatePreset || 'next_8_weeks', allocationStartDate, allocationEndDate, 8);
 
-  const metricsFilters = buildWhereConditions(metricsVertical, req.user.role, req.user.line_of_business_id);
-  const utilizationFilters = buildWhereConditions(utilizationVertical, req.user.role, req.user.line_of_business_id);
-  const allocationFilters = buildWhereConditions(allocationVertical, req.user.role, req.user.line_of_business_id);
+  const metricsFilters = buildWhereConditions(metricsVertical, metricsServiceLine, req.user.role, req.user.line_of_business_id);
+  const utilizationFilters = buildWhereConditions(utilizationVertical, utilizationServiceLine, req.user.role, req.user.line_of_business_id);
+  const allocationFilters = buildWhereConditions(allocationVertical, allocationServiceLine, req.user.role, req.user.line_of_business_id);
   
-  // 1. Active HC (employees working on projects in the selected date range)
   const activeHCQuery = `
     SELECT COUNT(DISTINCT e.emp_id) as active_hc
     FROM employee_details e
@@ -172,7 +222,6 @@ const getDashboardMetrics = (req, res) => {
     AND epa.start_date <= ? AND epa.end_date >= ?
   `;
   
-  // 2. Utilization % calculation
   const utilizationQuery = `
     SELECT 
       COALESCE(SUM(t.hours_per_day), 0) as total_billed_hours,
@@ -187,7 +236,6 @@ const getDashboardMetrics = (req, res) => {
     ${utilizationFilters.whereClause}
   `;
   
-  // 3. Allocation Forecast % for next 8 weeks
   const allocationForecastQuery = `
     SELECT 
       COALESCE(SUM(epa.hours_per_day * 5), 0) as total_forecasted_hours,
@@ -199,9 +247,8 @@ const getDashboardMetrics = (req, res) => {
     ${allocationFilters.whereClause}
   `;
   
-  // Execute all queries
   const activeHCParams = [...metricsFilters.params, metricsDateRange.endDate, metricsDateRange.startDate];
-  const utilizationParams = [...utilizationFilters.params, utilizationDateRange.startDate, utilizationDateRange.endDate];
+  const utilizationParams = [utilizationDateRange.startDate, utilizationDateRange.endDate, ...utilizationFilters.params];
   const forecastParams = [allocationDateRange.endDate, allocationDateRange.startDate, ...allocationFilters.params];
   
   Promise.all([
@@ -225,12 +272,11 @@ const getDashboardMetrics = (req, res) => {
     })
   ])
   .then(([activeHC, utilization, forecast]) => {
-    // Calculate metrics
     const totalAvailableHours = utilization.total_employees * utilization.working_days * 8;
     const utilizationPercentage = totalAvailableHours > 0 ? 
       ((utilization.total_billed_hours / totalAvailableHours) * 100).toFixed(1) : 0;
     
-    const totalForecastAvailableHours = forecast.total_employees * 8 * 5 * 8; // 8 hours/day * 5 days/week * 8 weeks
+    const totalForecastAvailableHours = forecast.total_employees * 8 * 5 * 8;
     const allocationForecastPercentage = totalForecastAvailableHours > 0 ? 
       ((forecast.total_forecasted_hours / totalForecastAvailableHours) * 100).toFixed(1) : 0;
     
@@ -250,30 +296,27 @@ const getDashboardMetrics = (req, res) => {
   });
 };
 
-// Get utilization trends
 const getUtilizationTrends = (req, res) => {
   if (!userACL.hasEmployeeReadAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
     return res.status(404).send({error: true, message: msg});
   }
 
-  const { vertical, datePreset, startDate, endDate, groupBy = 'month' } = req.body;
+  const { vertical, serviceLine, datePreset, startDate, endDate, groupBy = 'month' } = req.body;
   
-  // Default to last month if no date range specified
   let dateRange;
   if (datePreset && datePreset !== 'custom') {
     dateRange = getDateRange(datePreset);
   } else if (startDate && endDate) {
     dateRange = { startDate, endDate };
   } else {
-    // Default to last month
     const today = new Date();
     const lastMonth = new Date();
     lastMonth.setMonth(today.getMonth() - 1);
-    lastMonth.setDate(1); // First day of last month
+    lastMonth.setDate(1);
     
     const endOfLastMonth = new Date();
-    endOfLastMonth.setDate(0); // Last day of previous month
+    endOfLastMonth.setDate(0);
     
     dateRange = {
       startDate: lastMonth.toISOString().split('T')[0],
@@ -283,11 +326,9 @@ const getUtilizationTrends = (req, res) => {
   
   const { startDate: filterStart, endDate: filterEnd } = dateRange;
   
-  // Build base query conditions
   let whereConditions = [];
   let params = [];
   
-  // Add line of business filter
   if (vertical && vertical !== 'all') {
     whereConditions.push('e.line_of_business_id = ?');
     params.push(vertical);
@@ -296,14 +337,82 @@ const getUtilizationTrends = (req, res) => {
     params.push(req.user.line_of_business_id);
   }
   
+  if (serviceLine && serviceLine !== 'all') {
+    whereConditions.push('e.service_line_id = ?');
+    params.push(serviceLine);
+  }
+  
+  const shouldGroupByServiceLine = (req.user.role === 'lobadmin' || req.user.role === 'project_manager' || req.user.role === 'leadership' || req.user.role === 'off_shore_lead' || req.user.role === 'manager' || req.user.role === 'producer') && 
+                                   (!serviceLine || serviceLine === 'all');
+  
+  if (shouldGroupByServiceLine) {
+    whereConditions.push('e.service_line_id IS NOT NULL');
+  }
+  
   const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
   
-  // Group by clause
   const groupByClause = groupBy === 'week' ? 
-    'DATE_FORMAT(ite.date, "%Y-%u")' : 
-    'DATE_FORMAT(ite.date, "%Y-%m")';
+    'DATE_FORMAT(ite.Date, "%Y-%u")' : 
+    'DATE_FORMAT(ite.Date, "%Y-%m")';
   
-  const utilizationTrendsQuery = `
+  const isOffshoreLeadWithSpecificServiceLine = (req.user.role === 'off_shore_lead' || req.user.role === 'manager') && serviceLine && serviceLine !== 'all';
+  
+  let serviceLineWhereClause = '';
+  let serviceLineParams = [];
+  let serviceLineJoinClause = '';
+  if (shouldGroupByServiceLine) {
+    if (req.user.role === 'off_shore_lead' || req.user.role === 'manager') {
+      serviceLineJoinClause = 'INNER JOIN offshore_lead_service_lines olsl ON sl.service_line_id = olsl.service_line_id';
+      serviceLineWhereClause = 'WHERE olsl.offshore_lead_id = ?';
+      serviceLineParams = [req.user.user_id];
+    } else if (vertical && vertical !== 'all') {
+      serviceLineWhereClause = 'WHERE sl.line_of_business_id = ?';
+      serviceLineParams = [vertical];
+    } else if (req.user.role !== 'administrator') {
+      serviceLineWhereClause = 'WHERE sl.line_of_business_id = ?';
+      serviceLineParams = [req.user.line_of_business_id];
+    }
+  }
+  
+  let utilizationTrendsQuery;
+  if (shouldGroupByServiceLine) {
+    
+    utilizationTrendsQuery = `
+      SELECT 
+        sl.name as vertical_name,
+        ${groupByClause} as period,
+        COALESCE(SUM(ite.duration), 0) as total_billed_hours,
+        COUNT(DISTINCT e.emp_id) as total_employees,
+        ${getWorkingDays(filterStart, filterEnd)} as working_days
+      FROM service_line sl
+      ${serviceLineJoinClause}
+      LEFT JOIN employee_details e ON sl.service_line_id = e.service_line_id
+        AND e.line_of_business_id = sl.line_of_business_id
+      LEFT JOIN imported_timesheet_entries ite ON CONCAT(e.first_name, ' ', e.last_name) = ite.Employee 
+        AND ite.Date BETWEEN ? AND ?
+        AND e.emp_id IS NOT NULL
+      ${serviceLineWhereClause}
+      GROUP BY sl.service_line_id, sl.name, ${groupByClause}
+      ORDER BY sl.name, period
+    `;
+  } else if (isOffshoreLeadWithSpecificServiceLine) {
+    utilizationTrendsQuery = `
+      SELECT 
+        COALESCE(sl.name, 'No Service Line') as vertical_name,
+        ${groupByClause} as period,
+        COALESCE(SUM(ite.duration), 0) as total_billed_hours,
+        COUNT(DISTINCT e.emp_id) as total_employees,
+        ${getWorkingDays(filterStart, filterEnd)} as working_days
+      FROM employee_details e
+      LEFT JOIN service_line sl ON e.service_line_id = sl.service_line_id
+      LEFT JOIN imported_timesheet_entries ite ON CONCAT(e.first_name, ' ', e.last_name) = ite.Employee 
+        AND ite.Date BETWEEN ? AND ?
+      ${whereClause}
+      GROUP BY ${groupByClause}
+      ORDER BY period
+    `;
+  } else {
+    utilizationTrendsQuery = `
     SELECT 
       lb.name as vertical_name,
       ${groupByClause} as period,
@@ -312,14 +421,21 @@ const getUtilizationTrends = (req, res) => {
       ${getWorkingDays(filterStart, filterEnd)} as working_days
     FROM employee_details e
     LEFT JOIN line_of_business lb ON e.line_of_business_id = lb.line_of_business_id
-    LEFT JOIN imported_timesheet_entries ite ON ite.date BETWEEN ? AND ?
+    LEFT JOIN imported_timesheet_entries ite ON CONCAT(e.first_name, ' ', e.last_name) = ite.Employee 
+      AND ite.Date BETWEEN ? AND ?
     ${whereClause}
     GROUP BY lb.line_of_business_id, lb.name, ${groupByClause}
     ORDER BY lb.name, period
   `;
+  }
 
   
-  const queryParams = [filterStart, filterEnd, ...params];
+  let queryParams;
+  if (shouldGroupByServiceLine) {
+    queryParams = [filterStart, filterEnd, ...serviceLineParams];
+  } else {
+    queryParams = [filterStart, filterEnd, ...params];
+  }
   
   sql.query(utilizationTrendsQuery, queryParams, (err, rows) => {
     if (err) {
@@ -327,7 +443,7 @@ const getUtilizationTrends = (req, res) => {
       return res.status(500).send(`There was a problem getting utilization trends. ${err}`);
     }
     
-    // Process data for charts
+    
     const chartData = {};
     const periods = new Set();
     
@@ -351,7 +467,6 @@ const getUtilizationTrends = (req, res) => {
       periods.add(row.period);
     });
     
-    // Convert to array format for charts
     const chartDataArray = Object.keys(chartData).map(vertical => ({
       name: vertical,
       data: chartData[vertical]
@@ -367,25 +482,31 @@ const getUtilizationTrends = (req, res) => {
   });
 };
 
-// Get allocation forecast
 const getAllocationForecast = (req, res) => {
   if (!userACL.hasEmployeeReadAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
     return res.status(404).send({error: true, message: msg});
   }
 
-  const { vertical } = req.body;
+  const { vertical, serviceLine, datePreset, startDate, endDate } = req.body;
   
-  // Get next 8 weeks
-  const forecastStartDate = new Date();
-  const forecastEndDate = new Date();
-  forecastEndDate.setDate(forecastEndDate.getDate() + 56); // 8 weeks
+  let forecastStartDate, forecastEndDate;
+  if (datePreset && datePreset !== 'custom') {
+    const dateRange = getDateRange(datePreset);
+    forecastStartDate = new Date(dateRange.startDate);
+    forecastEndDate = new Date(dateRange.endDate);
+  } else if (startDate && endDate) {
+    forecastStartDate = new Date(startDate);
+    forecastEndDate = new Date(endDate);
+  } else {
+    forecastStartDate = new Date();
+    forecastEndDate = new Date();
+  forecastEndDate.setDate(forecastEndDate.getDate() + 56);
+  }
   
-  // Build base query conditions
   let whereConditions = [];
   let params = [];
   
-  // Add line of business filter
   if (vertical && vertical !== 'all') {
     whereConditions.push('e.line_of_business_id = ?');
     params.push(vertical);
@@ -394,15 +515,29 @@ const getAllocationForecast = (req, res) => {
     params.push(req.user.line_of_business_id);
   }
   
+  if (serviceLine && serviceLine !== 'all') {
+    whereConditions.push('e.service_line_id = ?');
+    params.push(serviceLine);
+  }
+  
+  const shouldGroupByServiceLine = (req.user.role === 'lobadmin' || req.user.role === 'project_manager' || req.user.role === 'leadership' || req.user.role === 'off_shore_lead' || req.user.role === 'manager' || req.user.role === 'producer') && 
+                                   (!serviceLine || serviceLine === 'all');
+  
+  if (shouldGroupByServiceLine) {
+    whereConditions.push('e.service_line_id IS NOT NULL');
+  }
+  
   const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
   
-  // Generate 8 weeks data
   const weeks = [];
-  for (let i = 0; i < 8; i++) {
+  const totalDays = Math.ceil((forecastEndDate.getTime() - forecastStartDate.getTime()) / (1000 * 60 * 60 * 24));
+  const totalWeeks = Math.ceil(totalDays / 7);
+  
+  for (let i = 0; i < totalWeeks; i++) {
     const weekStart = new Date(forecastStartDate);
     weekStart.setDate(weekStart.getDate() + (i * 7));
     const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 4); // Monday to Friday
+    weekEnd.setDate(weekEnd.getDate() + 4);
     
     weeks.push({
       weekNumber: i + 1,
@@ -412,8 +547,83 @@ const getAllocationForecast = (req, res) => {
     });
   }
   
-  // Get allocation data for each week
-  const allocationForecastQuery = `
+  const isOffshoreLeadWithSpecificServiceLine = (req.user.role === 'off_shore_lead' || req.user.role === 'manager') && serviceLine && serviceLine !== 'all';
+  
+  let serviceLineWhereClause2 = '';
+  let serviceLineParams2 = [];
+  let serviceLineJoinClause2 = '';
+  if (shouldGroupByServiceLine) {
+    if (req.user.role === 'off_shore_lead' || req.user.role === 'manager') {
+      serviceLineJoinClause2 = 'INNER JOIN offshore_lead_service_lines olsl ON sl.service_line_id = olsl.service_line_id';
+      serviceLineWhereClause2 = 'WHERE olsl.offshore_lead_id = ?';
+      serviceLineParams2 = [req.user.user_id];
+    } else if (vertical && vertical !== 'all') {
+      serviceLineWhereClause2 = 'WHERE sl.line_of_business_id = ?';
+      serviceLineParams2 = [vertical];
+    } else if (req.user.role !== 'administrator') {
+      serviceLineWhereClause2 = 'WHERE sl.line_of_business_id = ?';
+      serviceLineParams2 = [req.user.line_of_business_id];
+    }
+  }
+  
+  let allocationForecastQuery;
+  if (shouldGroupByServiceLine) {
+    allocationForecastQuery = `
+      SELECT 
+        sl.name as vertical_name,
+        epa.start_date,
+        epa.end_date,
+        epa.hours_per_day,
+        COUNT(DISTINCT e.emp_id) as total_employees,
+        CASE 
+          WHEN epa.start_date = epa.end_date THEN 1
+          ELSE (
+            DATEDIFF(epa.end_date, epa.start_date) + 1
+            - (DATEDIFF(epa.end_date, epa.start_date) DIV 7) * 2 
+            - CASE WHEN WEEKDAY(epa.start_date) = 6 THEN 1 ELSE 0 END 
+            - CASE WHEN WEEKDAY(epa.end_date) = 5 THEN 1 ELSE 0 END 
+          )
+        END as working_days
+      FROM service_line sl
+      ${serviceLineJoinClause2}
+      LEFT JOIN employee_details e ON sl.service_line_id = e.service_line_id
+        AND e.line_of_business_id = sl.line_of_business_id
+      LEFT JOIN employee_project_allocations epa ON e.emp_id = epa.emp_id
+        AND epa.start_date <= ? 
+        AND epa.end_date >= ?
+        AND e.emp_id IS NOT NULL
+      ${serviceLineWhereClause2}
+      GROUP BY sl.service_line_id, sl.name, epa.start_date, epa.end_date, epa.hours_per_day
+      ORDER BY sl.name, epa.start_date
+    `;
+  } else if (isOffshoreLeadWithSpecificServiceLine) {
+    allocationForecastQuery = `
+      SELECT 
+        COALESCE(sl.name, 'No Service Line') as vertical_name,
+        epa.start_date,
+        epa.end_date,
+        epa.hours_per_day,
+        COUNT(DISTINCT e.emp_id) as total_employees,
+        CASE 
+          WHEN epa.start_date = epa.end_date THEN 1
+          ELSE (
+            DATEDIFF(epa.end_date, epa.start_date) + 1
+            - (DATEDIFF(epa.end_date, epa.start_date) DIV 7) * 2 
+            - CASE WHEN WEEKDAY(epa.start_date) = 6 THEN 1 ELSE 0 END 
+            - CASE WHEN WEEKDAY(epa.end_date) = 5 THEN 1 ELSE 0 END 
+          )
+        END as working_days
+      FROM employee_details e
+      LEFT JOIN service_line sl ON e.service_line_id = sl.service_line_id
+      LEFT JOIN employee_project_allocations epa ON e.emp_id = epa.emp_id
+        AND epa.start_date <= ? 
+        AND epa.end_date >= ?
+      ${whereClause}
+      GROUP BY epa.start_date, epa.end_date, epa.hours_per_day
+      ORDER BY epa.start_date
+    `;
+  } else {
+    allocationForecastQuery = `
     SELECT 
       lb.name as vertical_name,
       epa.start_date,
@@ -438,20 +648,24 @@ const getAllocationForecast = (req, res) => {
     GROUP BY lb.line_of_business_id, lb.name, epa.start_date, epa.end_date, epa.hours_per_day
     ORDER BY lb.name, epa.start_date
   `;
+  }
   
-  const queryParams = [forecastEndDate.toISOString().split('T')[0], forecastStartDate.toISOString().split('T')[0], ...params];
+  let forecastQueryParams;
+  if (shouldGroupByServiceLine) {
+    forecastQueryParams = [forecastEndDate.toISOString().split('T')[0], forecastStartDate.toISOString().split('T')[0], ...serviceLineParams2];
+  } else {
+    forecastQueryParams = [forecastEndDate.toISOString().split('T')[0], forecastStartDate.toISOString().split('T')[0], ...params];
+  }
   
-  sql.query(allocationForecastQuery, queryParams, (err, rows) => {
+  sql.query(allocationForecastQuery, forecastQueryParams, (err, rows) => {
     if (err) {
       console.log("error: ", err);
       return res.status(500).send(`There was a problem getting allocation forecast. ${err}`);
     }
     
-    // Process data for charts
     const chartData = {};
     const overallData = [];
     
-    // Initialize chart data
     weeks.forEach(week => {
       overallData.push({
         week: week.label,
@@ -472,51 +686,42 @@ const getAllocationForecast = (req, res) => {
         }));
       }
       
-      // Calculate total forecasted hours for this allocation
       const totalForecastedHours = row.hours_per_day * row.working_days * row.total_employees;
       
-      // Find which weeks this allocation covers and calculate overlap
       weeks.forEach((week, index) => {
         const weekStart = new Date(week.startDate);
         const weekEnd = new Date(week.endDate);
         const allocStart = new Date(row.start_date);
         const allocEnd = new Date(row.end_date);
         
-        // Check if allocation overlaps with this week
         if (allocStart <= weekEnd && allocEnd >= weekStart) {
-          // Calculate the actual overlap in days for this week
           const overlapStart = new Date(Math.max(weekStart.getTime(), allocStart.getTime()));
           const overlapEnd = new Date(Math.min(weekEnd.getTime(), allocEnd.getTime()));
           
-          // Calculate working days in the overlap period
           let overlapWorkingDays = 0;
           if (overlapStart.getTime() === overlapEnd.getTime()) {
-            // Same day
             const dayOfWeek = overlapStart.getDay();
-            if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Monday to Friday
+            if (dayOfWeek >= 1 && dayOfWeek <= 5) {
               overlapWorkingDays = 1;
             }
           } else {
-            // Multiple days - calculate working days in overlap
             const totalDays = Math.ceil((overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
             const fullWeeks = Math.floor(totalDays / 7);
             const remainingDays = totalDays % 7;
             
-            overlapWorkingDays = fullWeeks * 5; // 5 working days per week
+            overlapWorkingDays = fullWeeks * 5;
             
-            // Add remaining working days
             const startDayOfWeek = overlapStart.getDay();
             for (let i = 0; i < remainingDays; i++) {
               const dayOfWeek = (startDayOfWeek + i) % 7;
-              if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Monday to Friday
+              if (dayOfWeek >= 1 && dayOfWeek <= 5) {
                 overlapWorkingDays++;
               }
             }
           }
           
-          // Calculate forecasted hours for this week based on overlap
           const weeklyForecastedHours = (totalForecastedHours / row.working_days) * overlapWorkingDays;
-          const totalAvailableHours = row.total_employees * 40; // 40 hours per week
+          const totalAvailableHours = row.total_employees * 40;
           const bookableHours = Math.max(0, totalAvailableHours - weeklyForecastedHours);
           const allocationPercentage = totalAvailableHours > 0 ? 
             ((weeklyForecastedHours / totalAvailableHours) * 100) : 0;
@@ -528,7 +733,6 @@ const getAllocationForecast = (req, res) => {
             allocationPercentage
           );
           
-          // Update overall data
           overallData[index].forecastedHours += weeklyForecastedHours;
           overallData[index].bookableHours += bookableHours;
           overallData[index].allocationPercentage = Math.max(
@@ -539,7 +743,6 @@ const getAllocationForecast = (req, res) => {
       });
     });
     
-    // Convert to array format for charts
     const chartDataArray = Object.keys(chartData).map(vertical => ({
       name: vertical,
       data: chartData[vertical]
@@ -553,9 +756,80 @@ const getAllocationForecast = (req, res) => {
   });
 };
 
+const getServiceLinesByLineOfBusiness = (req, res) => {
+  if (!userACL.hasEmployeeReadAccess(req.user.role)) {
+    const msg = `User role '${req.user.role}' does not have privileges on this action`;
+    return res.status(404).send({error: true, message: msg});
+  }
+
+  const { lineOfBusinessId } = req.params;
+  
+  if (!lineOfBusinessId || lineOfBusinessId === 'all') {
+    getServiceLinesForUser(req.user, (serviceLines) => {
+      return res.status(200).send({
+        serviceLines: serviceLines,
+        user: req.user
+      });
+    });
+  } else {
+    let query;
+    let params = [];
+    
+    if (req.user.role === 'administrator') {
+      query = `SELECT sl.service_line_id, sl.name, sl.line_of_business_id, lb.name as line_of_business_name 
+               FROM service_line sl 
+               LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.line_of_business_id 
+               WHERE sl.line_of_business_id = ? 
+               ORDER BY sl.name`;
+      params = [lineOfBusinessId];
+    } else if (req.user.role === 'off_shore_lead' || req.user.role === 'manager') {
+      query = `SELECT sl.service_line_id, sl.name, sl.line_of_business_id, lb.name as line_of_business_name 
+               FROM service_line sl 
+               LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.line_of_business_id
+               INNER JOIN offshore_lead_service_lines olsl ON sl.service_line_id = olsl.service_line_id
+               WHERE olsl.offshore_lead_id = ? AND sl.line_of_business_id = ?
+               ORDER BY sl.name`;
+      params = [req.user.user_id, lineOfBusinessId];
+    } else {
+      if (lineOfBusinessId != req.user.line_of_business_id) {
+        return res.status(403).send({error: true, message: 'Access denied to service lines from other line of business'});
+      }
+      query = `SELECT sl.service_line_id, sl.name, sl.line_of_business_id, lb.name as line_of_business_name 
+               FROM service_line sl 
+               LEFT JOIN line_of_business lb ON sl.line_of_business_id = lb.line_of_business_id 
+               WHERE sl.line_of_business_id = ? 
+               ORDER BY sl.name`;
+      params = [lineOfBusinessId];
+    }
+    
+    sql.query(query, params, (err, rows) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(500).send(`There was a problem getting service lines. ${err}`);
+      }
+      
+      const serviceLines = [
+        { id: 'all', name: 'All', line_of_business_id: lineOfBusinessId },
+        ...rows.map(row => ({ 
+          id: row.service_line_id, 
+          name: row.name, 
+          line_of_business_id: row.line_of_business_id,
+          line_of_business_name: row.line_of_business_name
+        }))
+      ];
+      
+      return res.status(200).send({
+        serviceLines: serviceLines,
+        user: req.user
+      });
+    });
+  }
+};
+
 module.exports = {
   getFilterOptions,
   getDashboardMetrics,
   getUtilizationTrends,
-  getAllocationForecast
+  getAllocationForecast,
+  getServiceLinesByLineOfBusiness
 };
