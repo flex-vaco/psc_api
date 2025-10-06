@@ -26,21 +26,42 @@ const findAll = (req, res) => {
   sql.query(query, (err, rows) => {
     if (err) {
       console.log("error: ", err);
-      return res.status(500).send(`There was a problem getting projects. ${err}`);
+      // Enhanced error handling for SQL errors
+      if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET' || err.code === 'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR') {
+        return res.status(500).send({error: true, message: "Database connection lost. Please try again."});
+      }
+      return res.status(500).send({error: true, message: `There was a problem getting projects. ${err.message}`});
     }
+    
+    // Handle case when no projects are found
+    if (!rows || rows.length === 0) {
+      return res.status(200).send({ projects: [], user: req.user });
+    }
+    
     let recCount = 0;
+    let hasError = false;
+    
     rows.forEach((row) => {
-      const clientQry = `SELECT * FROM clients WHERE client_id = '${row.client_id}'`;
-      sql.query(clientQry, (err, clientRows) => {
+      const clientQry = `SELECT * FROM clients WHERE client_id = ?`;
+      sql.query(clientQry, [row.client_id], (err, clientRows) => {
           if (err) {
               console.log("Project: Err getting Client details:", err);
-              return res.status(500).send(`Problem getting records. ${err}`);
+              if (!hasError) {
+                hasError = true;
+                // Enhanced error handling for SQL errors
+                if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET' || err.code === 'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR') {
+                  return res.status(500).send({error: true, message: "Database connection lost. Please try again."});
+                }
+                return res.status(500).send({error: true, message: `Problem getting client records. ${err.message}`});
+              }
           } else {
-              row.clientDetails = clientRows[0];
-              finalResult.push(row);
-              recCount = recCount+1;
-              if (recCount === rows.length) {
-                  return res.status(200).send({ projects: finalResult, user: req.user });
+              if (!hasError) {
+                row.clientDetails = clientRows[0] || null;
+                finalResult.push(row);
+                recCount = recCount + 1;
+                if (recCount === rows.length) {
+                    return res.status(200).send({ projects: finalResult, user: req.user });
+                }
               }
           }
       })      
@@ -80,7 +101,11 @@ const findById = (req, res) => {
     sql.query(query, params, (err, rows) => {
       if (err) {
         console.log("error: ", err);
-        return res.status(500).send(`There was a problem finding the Project. ${err}`);
+        // Enhanced error handling for SQL errors
+        if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET' || err.code === 'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR') {
+          return res.status(500).send({error: true, message: "Database connection lost. Please try again."});
+        }
+        return res.status(500).send({error: true, message: `There was a problem finding the Project. ${err.message}`});
       }
       
       if (rows.length === 0) {
@@ -116,7 +141,11 @@ const create = (req, res) => {
   sql.query(insertQuery, [newProject], (err, succeess) => {
     if (err) {
       console.log("error: ", err);
-      res.status(500).send(`Problem while Adding the Project. ${err}`);
+      // Enhanced error handling for SQL errors
+      if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET' || err.code === 'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR') {
+        return res.status(500).send({error: true, message: "Database connection lost. Please try again."});
+      }
+      return res.status(500).send({error: true, message: `Problem while Adding the Project. ${err.message}`});
     } else {
       newProject.project_id = succeess.insertId;
       const response = {newProject, user: req.user}
@@ -143,7 +172,11 @@ const update = (req, res) => {
     sql.query(checkQuery, [project_id], (err, rows) => {
       if (err) {
         console.log("error: ", err);
-        return res.status(500).send(`Problem while checking project access. ${err}`);
+        // Enhanced error handling for SQL errors
+        if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET' || err.code === 'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR') {
+          return res.status(500).send({error: true, message: "Database connection lost. Please try again."});
+        }
+        return res.status(500).send({error: true, message: `Problem while checking project access. ${err.message}`});
       }
       
       if (rows.length === 0) {
@@ -169,7 +202,11 @@ const update = (req, res) => {
     sql.query(updateQuery,[updatedProject, project_id], (err, succeess) => {
       if (err) {
         console.log("error: ", err);
-        res.status(500).send(`Problem while Updating the ${projectTable} with ID: ${project_id}. ${err}`);
+        // Enhanced error handling for SQL errors
+        if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET' || err.code === 'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR') {
+          return res.status(500).send({error: true, message: "Database connection lost. Please try again."});
+        }
+        return res.status(500).send({error: true, message: `Problem while Updating the ${projectTable} with ID: ${project_id}. ${err.message}`});
       } else {
         if (succeess.affectedRows == 1){
           updatedProject.project_id = parseInt(project_id);
@@ -197,7 +234,11 @@ const erase = (req, res) => {
   sql.query(deleteQuery,[project_id], (err, succeess) => {
     if (err) {
       console.log("error: ", err);
-      res.status(500).send(`Problem while Deleting the ${projectTable} with ID: ${project_id}. ${err}`);
+      // Enhanced error handling for SQL errors
+      if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET' || err.code === 'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR') {
+        return res.status(500).send({error: true, message: "Database connection lost. Please try again."});
+      }
+      return res.status(500).send({error: true, message: `Problem while Deleting the ${projectTable} with ID: ${project_id}. ${err.message}`});
     } else {
       //console.log("DEL: ", succeess)
       if (succeess.affectedRows == 1){
@@ -221,7 +262,11 @@ const findByLineOfBusiness = (req, res) => {
     sql.query(query, [lineOfBusinessId], (err, rows) => {
       if (err) {
         console.log("error: ", err);
-        return res.status(500).send(`There was a problem getting projects for line of business. ${err}`);
+        // Enhanced error handling for SQL errors
+        if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET' || err.code === 'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR') {
+          return res.status(500).send({error: true, message: "Database connection lost. Please try again."});
+        }
+        return res.status(500).send({error: true, message: `There was a problem getting projects for line of business. ${err.message}`});
       }
       return res.status(200).send({projects: rows, user: req.user});
     });
