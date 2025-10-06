@@ -104,7 +104,7 @@ const search = (req, res) => {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
     return res.status(404).send({error: true, message: msg});
   }
-    const empSkills = req.query.skill;
+    const empSkills = req.query.skill ? (Array.isArray(req.query.skill) ? req.query.skill : req.query.skill.split(',')) : null;
     const empLocation =  req.query.location ?? null;
     const empExperience = req.query.exp ?? null;
     const empRole = req.query.role ?? null;
@@ -169,7 +169,7 @@ const search = (req, res) => {
                                              if (row.capability_areas) {
                                                let capabilityAreaList = row.capability_areas.split(',');
                                                capabilityAreaList.forEach((capabilityArea)=> {
-                                                    if (capabilityArea.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
+                                                    if (capabilityArea.trim().toLowerCase().includes(empSkill.trim().toLowerCase())) {
                                                       found = true;
                                                       return found;
                                                     }
@@ -179,7 +179,7 @@ const search = (req, res) => {
                                              if (row.primary_skills) {
                                                let primarySkillList = row.primary_skills.split(',');
                                                primarySkillList.forEach((skill)=> {
-                                                    if (skill.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
+                                                    if (skill.trim().toLowerCase().includes(empSkill.trim().toLowerCase())) {
                                                       found = true;
                                                       return found;
                                                     }
@@ -189,7 +189,7 @@ const search = (req, res) => {
                                              if (row.secondary_skills) {
                                                let secondarySkillList = row.secondary_skills.split(',');
                                                secondarySkillList.forEach((skill)=> {
-                                                    if (skill.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
+                                                    if (skill.trim().toLowerCase().includes(empSkill.trim().toLowerCase())) {
                                                       found = true;
                                                       return found;
                                                     }
