@@ -29,13 +29,14 @@ const findAll = (req, res) => {
   }
   
   if (userRole !== 'administrator' && userLineOfBusinessId) {
-    if (userRole === 'off_shore_lead' || userRole === 'manager') {
-      // For offshore leads and managers, filter by their assigned service lines
+    if (userLineOfBusinessId == 1) {
+      whereConditions.push(`e.line_of_business_id = ?`);
+      queryParams.push(userLineOfBusinessId);
+    } else if (userRole === 'off_shore_lead' || userRole === 'manager') {
       query += ` INNER JOIN offshore_lead_service_lines olsl ON e.service_line_id = olsl.service_line_id`;
       whereConditions.push(`olsl.offshore_lead_id = ?`);
       queryParams.push(req.user.user_id);
     } else {
-      // For other roles, filter by line of business
       whereConditions.push(`e.line_of_business_id = ?`);
       queryParams.push(userLineOfBusinessId);
     }
@@ -125,12 +126,12 @@ const search = (req, res) => {
     
     // Filter by line of business or service lines if user is not administrator
     if (userRole !== 'administrator' && userLineOfBusinessId) {
-      if (userRole === 'off_shore_lead' || userRole === 'manager') {
-        // For offshore leads and managers, filter by their assigned service lines
+      if (userLineOfBusinessId == 1) {
+        query += ` WHERE emp.line_of_business_id = ${userLineOfBusinessId}`;
+      } else if (userRole === 'off_shore_lead' || userRole === 'manager') {
         query += ` INNER JOIN offshore_lead_service_lines olsl ON emp.service_line_id = olsl.service_line_id`;
         query += ` WHERE olsl.offshore_lead_id = ${req.user.user_id}`;
       } else {
-        // For other roles, filter by line of business
         query += ` WHERE emp.line_of_business_id = ${userLineOfBusinessId}`;
       }
     } else {
