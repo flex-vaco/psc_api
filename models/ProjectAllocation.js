@@ -363,19 +363,13 @@ const getResourceAvailability = (req, res) => {
               COUNT(*) as allocation_count
             FROM ${empProjAlloc}
             WHERE emp_id IN (${empIdsStr})
-              AND (
-                (start_date <= ? AND end_date >= ?) OR
-                (start_date <= ? AND end_date >= ?) OR
-                (start_date >= ? AND end_date <= ?)
-              )
+              AND start_date <= ? AND end_date >= ?
             GROUP BY emp_id
           `;
           
           const queryParams = [
             ...empIds,
-            week.startDate, week.endDate, 
-            week.startDate, week.startDate,
-            week.endDate, week.endDate 
+            week.endDate, week.startDate
           ];
           
           sql.query(allocationQuery, queryParams, (err, allocations) => {
@@ -445,19 +439,13 @@ const getResourceAvailability = (req, res) => {
           COUNT(*) as allocation_count
         FROM ${empProjAlloc}
         WHERE emp_id IN (${empIdsStr})
-          AND (
-            (start_date <= ? AND end_date >= ?) OR
-            (start_date <= ? AND end_date >= ?) OR
-            (start_date >= ? AND end_date <= ?)
-          )
+          AND start_date <= ? AND end_date >= ?
         GROUP BY emp_id
       `;
       
       const queryParams = [
         ...empIds,
-        fromDate, toDate,  
-        fromDate, fromDate, 
-        toDate, toDate     
+        toDate, fromDate
       ];
       
       sql.query(allocationQuery, queryParams, (err, allocations) => {

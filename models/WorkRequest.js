@@ -3,6 +3,7 @@ const workRequestTable = "work_request";
 const workRequestCapabilityAreasTable = "work_request_capability_areas";
 const workRequestResourcesTable = "work_request_resources";
 const workRequestOffshoreLeadsTable = "work_request_offshore_leads";
+const employeeProjectAllocationsTable = "employee_project_allocations";
 const userACL = require('../lib/userACL.js');
 
 const findAll = (req, res) => {
@@ -640,7 +641,6 @@ const getFilteredResourcesForOffshoreLead = (req, res) => {
   });
 };
 
-// New function for offshore lead to approve/reject work request
 const updateWorkRequestStatus = (req, res) => {
   if (!userACL.hasOffshoreLeadWorkRequestAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
@@ -691,14 +691,12 @@ const updateWorkRequestStatus = (req, res) => {
       }
       
       if (success.affectedRows === 1) {
-        // If approved and resources are provided, update the resources
         if (status === 'approved' && resourceIds && resourceIds.length > 0) {
-          // Delete existing resources
           sql.query(`DELETE FROM ${workRequestResourcesTable} WHERE work_request_id = ?`, [id], (err) => {
             if (err) {
               console.log("Error deleting existing resources:", err);
             } else {
-              // Insert new resources
+
               const resourcesData = resourceIds.map(empId => ({
                 work_request_id: id,
                 employee_id: empId,
@@ -710,6 +708,14 @@ const updateWorkRequestStatus = (req, res) => {
                 sql.query(resourcesQuery, [data], (err) => {
                   if (err) console.log("Error inserting resource:", err);
                 });
+              });
+              
+              createProjectAllocationsFromWorkRequest(workRequest, resourceIds, (err) => {
+                if (err) {
+                  console.log("Error creating project allocations:", err);
+                } else {
+                  console.log("Project allocations created successfully for work request:", id);
+                }
               });
             }
           });
@@ -730,7 +736,6 @@ const updateWorkRequestStatus = (req, res) => {
   });
 };
 
-// Submit work request (draft to submitted)
 const submitWorkRequest = (req, res) => {
   if (!userACL.hasWorkRequestCreateAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
@@ -787,6 +792,71 @@ const submitWorkRequest = (req, res) => {
         res.status(404).send(`Record not found with Work Request ID: ${id}`);
       }
     });
+  });
+};
+
+const createProjectAllocationsFromWorkRequest = (workRequest, resourceIds, callback) => {
+  const projectId = workRequest.project_id;
+  const startDate = workRequest.duration_from;
+  const endDate = workRequest.duration_to;
+  const hoursPerWeek = workRequest.hours_per_week;
+  const hoursPerDay = hoursPerWeek / 5;
+  
+  const workLocation = 'Remote';
+  const shiftStartTime = '09:00:00'; 
+  const shiftEndTime = '18:00:00'; 
+  
+  const empIdsStr = resourceIds.map(() => '?').join(',');
+  const employeeQuery = `SELECT emp_id, cost_per_hour FROM employee_details WHERE emp_id IN (${empIdsStr})`;
+  
+  sql.query(employeeQuery, resourceIds, (err, employees) => {
+    if (err) {
+      console.log("Error fetching employee details:", err);
+      callback(err);
+      return;
+    }
+    
+    const employeeCostMap = {};
+    employees.forEach(emp => {
+      employeeCostMap[emp.emp_id] = emp.cost_per_hour || 0.00;
+    });
+    
+    const allocationPromises = resourceIds.map(empId => {
+      return new Promise((resolve, reject) => {
+        const billRatePerHour = employeeCostMap[empId] || 0.00;
+        
+        const allocationData = {
+          emp_id: empId,
+          project_id: projectId,
+          start_date: startDate,
+          end_date: endDate,
+          work_location: workLocation,
+          hours_per_day: hoursPerDay,
+          shift_start_time: shiftStartTime,
+          shift_end_time: shiftEndTime,
+          bill_rate_per_hour: billRatePerHour
+        };
+        
+        const insertQuery = `INSERT INTO ${employeeProjectAllocationsTable} SET ?`;
+        sql.query(insertQuery, [allocationData], (err, result) => {
+          if (err) {
+            console.log(`Error creating project allocation for employee ${empId}:`, err);
+            reject(err);
+          } else {
+            console.log(`Project allocation created for employee ${empId} on project ${projectId} with bill rate ${billRatePerHour}`);
+            resolve(result);
+          }
+        });
+      });
+    });
+    
+    Promise.all(allocationPromises)
+      .then(() => {
+        callback(null);
+      })
+      .catch((err) => {
+        callback(err);
+      });
   });
 };
 
