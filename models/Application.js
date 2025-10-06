@@ -62,7 +62,7 @@ const getTechnologies = (req, res) => {
   // Get primary and secondary skills
   let skillsQuery = `SELECT secondary_skills, primary_skills FROM ${empTable}`;
   
-  const empSkills = req.query.skill;
+  const empSkills = req.query.skill ? (Array.isArray(req.query.skill) ? req.query.skill : req.query.skill.split(',')) : null;
   let allTechnologies = [];
   
   // Execute capability areas query
@@ -78,7 +78,7 @@ const getTechnologies = (req, res) => {
         let found = false;
         empSkills.forEach((empSkill) => {
           if (row.capability_area_name) {
-            if (row.capability_area_name.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
+            if (row.capability_area_name.trim().toLowerCase().includes(empSkill.trim().toLowerCase())) {
               found = true;
               return found;
             }
@@ -110,7 +110,7 @@ const getTechnologies = (req, res) => {
             if (row.primary_skills) {
               let primarySkillList = row.primary_skills.split(',');
               primarySkillList.forEach((skill)=> {
-                if (skill.trim().toLowerCase() === empSkill.trim().toLowerCase()) {
+                if (skill.trim().toLowerCase().includes(empSkill.trim().toLowerCase())) {
                   found = true;
                   return found;
                 }
