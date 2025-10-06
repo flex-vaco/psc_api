@@ -19,5 +19,6 @@ router.get("/filter-options", verifyToken, ComprehensiveReports.getFilterOptions
 router.get("/dashboard-metrics", verifyToken, ComprehensiveReports.getDashboardMetrics);
 router.post("/utilization-trends", verifyToken, ComprehensiveReports.getUtilizationTrends);
 router.post("/allocation-forecast", verifyToken, ComprehensiveReports.getAllocationForecast);
+router.get("/service-lines/:lineOfBusinessId", verifyToken, ComprehensiveReports.getServiceLinesByLineOfBusiness);
 
 module.exports = router;
