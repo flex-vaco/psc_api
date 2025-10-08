@@ -388,6 +388,62 @@ const getTimesheetForExport = (req, res) => {
   }
 }
 
+const getImportedTimesheetEntries = (req, res) => {
+  const activeUser = req.user;
+  const { employee, project, startDate, endDate } = req.body;
+
+  // Check if user is offshore lead
+  if (activeUser?.role !== APP_CONSTANTS.USER_ROLES.OFF_SHORE_LEAD) {
+    const msg = `User role '${activeUser?.role}' does not have privileges on this action`;
+    return res.status(404).send({ error: true, message: msg });
+  }
+
+  let query = `
+    SELECT 
+      Date,
+      Employee,
+      Customer as Project,
+      SUM(Duration) as Duration,
+      GROUP_CONCAT(DISTINCT Case_Task_Event SEPARATOR ', ') as Tasks_Events,
+      GROUP_CONCAT(DISTINCT Note SEPARATOR ', ') as Notes,
+      Approval_Status
+    FROM imported_timesheet_entries 
+    WHERE line_of_business_id = ${activeUser?.line_of_business_id}
+  `;
+
+  // Add filters
+  if (employee && employee.trim() !== '') {
+    query += ` AND Employee LIKE '%${employee.trim()}%'`;
+  }
+
+  if (project && project.trim() !== '') {
+    query += ` AND Customer LIKE '%${project.trim()}%'`;
+  }
+
+  if (startDate && endDate) {
+    query += ` AND Date BETWEEN '${startDate}' AND '${endDate}'`;
+  }
+
+  query += ` GROUP BY Date, Employee, Customer, Approval_Status ORDER BY Date DESC, Employee ASC`;
+
+  try {
+    sql.query(query, (err, rows) => {
+      if (err) {
+        console.log("Error fetching imported timesheet entries:", err);
+        return res.status(500).send(`Problem getting imported timesheet entries. ${err}`);
+      }
+      return res.status(200).send({ 
+        timesheetEntries: rows, 
+        user: req.user,
+        totalCount: rows.length 
+      });
+    });
+  } catch (err) {
+    console.log("Timesheet:: Error:", err);
+    return res.status(500).send(`Error fetching imported timesheet entries: ${err}`);
+  }
+};
+
 const importTimesheet = (req, res) => { 
   const activeUser = req.user;
 
@@ -465,5 +521,6 @@ module.exports = {
     findByPendingEmployeeTimesheet,
     changeStatusSupervisior,
     getTimesheetForExport,
-    importTimesheet
+    importTimesheet,
+    getImportedTimesheetEntries
 }

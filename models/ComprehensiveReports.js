@@ -53,6 +53,33 @@ const getWorkingDays = (startDate, endDate) => {
   return workingDays;
 };
 
+// SQL function to calculate working days for each month
+const getMonthlyWorkingDaysSQL = (groupBy) => {
+  if (groupBy === 'week') {
+    // For weekly grouping, calculate working days for the week
+    return `
+      (DATEDIFF(
+        LEAST(DATE_ADD(DATE(STR_TO_DATE(CONCAT(DATE_FORMAT(ANY_VALUE(ite.Date), '%Y-%u'), ' Monday'), '%x-%v %W')), INTERVAL 6 DAY), CURDATE()),
+        DATE(STR_TO_DATE(CONCAT(DATE_FORMAT(ANY_VALUE(ite.Date), '%Y-%u'), ' Monday'), '%x-%v %W'))
+      ) + 1) - 
+      (2 * FLOOR((DATEDIFF(
+        LEAST(DATE_ADD(DATE(STR_TO_DATE(CONCAT(DATE_FORMAT(ANY_VALUE(ite.Date), '%Y-%u'), ' Monday'), '%x-%v %W')), INTERVAL 6 DAY), CURDATE()),
+        DATE(STR_TO_DATE(CONCAT(DATE_FORMAT(ANY_VALUE(ite.Date), '%Y-%u'), ' Monday'), '%x-%v %W'))
+      ) + 1) / 7)) - 
+      (CASE WHEN WEEKDAY(DATE(STR_TO_DATE(CONCAT(DATE_FORMAT(ANY_VALUE(ite.Date), '%Y-%u'), ' Monday'), '%x-%v %W'))) < 5 THEN 1 ELSE 0 END) - 
+      (CASE WHEN WEEKDAY(LEAST(DATE_ADD(DATE(STR_TO_DATE(CONCAT(DATE_FORMAT(ANY_VALUE(ite.Date), '%Y-%u'), ' Monday'), '%x-%v %W')), INTERVAL 6 DAY), CURDATE())) > 4 THEN 1 ELSE 0 END)
+    `;
+  } else {
+    // For monthly grouping, calculate working days for the month
+    return `
+      (DAY(LAST_DAY(STR_TO_DATE(CONCAT(DATE_FORMAT(ANY_VALUE(ite.Date), '%Y-%m'), '-01'), '%Y-%m-%d'))) - 
+       (2 * FLOOR(DAY(LAST_DAY(STR_TO_DATE(CONCAT(DATE_FORMAT(ANY_VALUE(ite.Date), '%Y-%m'), '-01'), '%Y-%m-%d'))) / 7)) - 
+       (CASE WHEN WEEKDAY(STR_TO_DATE(CONCAT(DATE_FORMAT(ANY_VALUE(ite.Date), '%Y-%m'), '-01'), '%Y-%m-%d')) < 5 THEN 1 ELSE 0 END) - 
+       (CASE WHEN WEEKDAY(LAST_DAY(STR_TO_DATE(CONCAT(DATE_FORMAT(ANY_VALUE(ite.Date), '%Y-%m'), '-01'), '%Y-%m-%d'))) > 4 THEN 1 ELSE 0 END))
+    `;
+  }
+};
+
 const getFilterOptions = (req, res) => {
   if (!userACL.hasEmployeeReadAccess(req.user.role)) {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
@@ -224,16 +251,15 @@ const getDashboardMetrics = (req, res) => {
   
   const utilizationQuery = `
     SELECT 
-      COALESCE(SUM(t.hours_per_day), 0) as total_billed_hours,
+      COALESCE(SUM(ite.duration), 0) as total_billed_hours,
       COUNT(DISTINCT e.emp_id) as total_employees,
-      ${getWorkingDays(utilizationDateRange.startDate, utilizationDateRange.endDate)} as working_days
+      ${getWorkingDays(metricsDateRange.startDate, metricsDateRange.endDate)} as working_days
     FROM employee_details e
-    LEFT JOIN timesheets t ON e.emp_id = t.emp_id 
-      AND t.timesheet_date BETWEEN ? AND ?
-      AND t.timesheet_status IN ('APPROVED', 'ACCEPTED')
+    LEFT JOIN imported_timesheet_entries ite ON CONCAT(e.first_name, ' ', e.last_name) = ite.Employee 
+      AND ite.Date BETWEEN ? AND ?
     LEFT JOIN employee_project_allocations epa ON e.emp_id = epa.emp_id
       AND CURDATE() BETWEEN epa.start_date AND epa.end_date
-    ${utilizationFilters.whereClause}
+    ${metricsFilters.whereClause}
   `;
   
   const allocationForecastQuery = `
@@ -248,7 +274,7 @@ const getDashboardMetrics = (req, res) => {
   `;
   
   const activeHCParams = [...metricsFilters.params, metricsDateRange.endDate, metricsDateRange.startDate];
-  const utilizationParams = [utilizationDateRange.startDate, utilizationDateRange.endDate, ...utilizationFilters.params];
+  const utilizationParams = [metricsDateRange.startDate, metricsDateRange.endDate, ...metricsFilters.params];
   const forecastParams = [allocationDateRange.endDate, allocationDateRange.startDate, ...allocationFilters.params];
   
   Promise.all([
@@ -383,7 +409,7 @@ const getUtilizationTrends = (req, res) => {
         ${groupByClause} as period,
         COALESCE(SUM(ite.duration), 0) as total_billed_hours,
         COUNT(DISTINCT e.emp_id) as total_employees,
-        ${getWorkingDays(filterStart, filterEnd)} as working_days
+        ${getMonthlyWorkingDaysSQL(groupBy)} as working_days
       FROM service_line sl
       ${serviceLineJoinClause}
       LEFT JOIN employee_details e ON sl.service_line_id = e.service_line_id
@@ -402,7 +428,7 @@ const getUtilizationTrends = (req, res) => {
         ${groupByClause} as period,
         COALESCE(SUM(ite.duration), 0) as total_billed_hours,
         COUNT(DISTINCT e.emp_id) as total_employees,
-        ${getWorkingDays(filterStart, filterEnd)} as working_days
+        ${getMonthlyWorkingDaysSQL(groupBy)} as working_days
       FROM employee_details e
       LEFT JOIN service_line sl ON e.service_line_id = sl.service_line_id
       LEFT JOIN imported_timesheet_entries ite ON CONCAT(e.first_name, ' ', e.last_name) = ite.Employee 
@@ -418,7 +444,7 @@ const getUtilizationTrends = (req, res) => {
       ${groupByClause} as period,
       COALESCE(SUM(ite.duration), 0) as total_billed_hours,
       COUNT(DISTINCT e.emp_id) as total_employees,
-      ${getWorkingDays(filterStart, filterEnd)} as working_days
+      ${getMonthlyWorkingDaysSQL(groupBy)} as working_days
     FROM employee_details e
     LEFT JOIN line_of_business lb ON e.line_of_business_id = lb.line_of_business_id
     LEFT JOIN imported_timesheet_entries ite ON CONCAT(e.first_name, ' ', e.last_name) = ite.Employee 
