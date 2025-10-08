@@ -176,8 +176,6 @@ const create = (req, res) => {
     const msg = `User role '${req.user.role}' does not have privileges on this action`;
     return res.status(404).send({error: true, message: msg});
   }
-  
-  console.log("workRequestDatas: ", req.body);
   // Set line of business based on user role
   let lineOfBusinessId = req.body.line_of_business_id;
   if (req.user.role !== 'administrator') {
@@ -193,7 +191,7 @@ const create = (req, res) => {
     duration_to: req.body.duration_to,
     hours_per_week: req.body.hours_per_week,
     notes: req.body.notes || '',
-    status: 'draft'
+    status: req.body.status || 'draft'
   };
   workRequestData.submitted_by = req.user.user_id;
   
@@ -298,9 +296,6 @@ const update = (req, res) => {
       console.log("Error parsing offshore_lead_ids:", e);
     }
   }
-  console.log("updatedWorkRequest: ", updatedWorkRequest);
-  console.log("Parsed capabilityAreaIds:", capabilityAreaIds);
-  console.log("Parsed resourceIds:", resourceIds);
   
   // Set line of business based on user role
   let lineOfBusinessId = updatedWorkRequest.line_of_business_id;
@@ -317,7 +312,8 @@ const update = (req, res) => {
     duration_from: updatedWorkRequest.duration_from,
     duration_to: updatedWorkRequest.duration_to,
     hours_per_week: updatedWorkRequest.hours_per_week,
-    notes: updatedWorkRequest.notes
+    notes: updatedWorkRequest.notes,
+    status: updatedWorkRequest.status
   };
   
   const updateQuery = `UPDATE ${workRequestTable} SET ? WHERE work_request_id = ?`;
@@ -327,7 +323,6 @@ const update = (req, res) => {
       res.status(500).send(`Problem while Updating the ${workRequestTable} with ID: ${id}. ${err}`);
     } else {
       if (success.affectedRows == 1){
-        console.log(`${workRequestTable} UPDATED:` , success)
         
         // Update capability areas if provided
         if (capabilityAreaIds && capabilityAreaIds.length > 0) {
@@ -362,7 +357,6 @@ const update = (req, res) => {
               employee_id: empId
             }));
             
-            console.log("Inserting resources data:", resourcesData);
             
             const resourcesQuery = `INSERT INTO ${workRequestResourcesTable} SET ?`;
             resourcesData.forEach(data => {
