@@ -231,6 +231,22 @@ const create = (req, res) => {
             if (err) console.log("Error inserting resource:", err);
           });
         });
+
+        const projectAllocationsData = req.body.resource_ids.map(empId => ({
+          work_request_id: workRequestId,
+          employee_id: empId,
+          project_id: req.body.project_id,
+          start_date: req.body.duration_from,
+          end_date: req.body.duration_to,
+          hours_per_day: (parseFloat(req.body.hours_per_week) || 0) / 5,
+        }));
+
+        const projectAllocationsQuery = `INSERT INTO ${employeeProjectAllocationsTable} SET ?`;
+        projectAllocationsData.forEach(data => {
+          sql.query(projectAllocationsQuery, [data], (err) => {
+            if (err) console.log("Error inserting project allocation:", err);
+          });
+        });
       }
       
       // Insert offshore leads if provided
@@ -356,14 +372,35 @@ const update = (req, res) => {
               work_request_id: id,
               employee_id: empId
             }));
-            
-            
+
             const resourcesQuery = `INSERT INTO ${workRequestResourcesTable} SET ?`;
             resourcesData.forEach(data => {
               sql.query(resourcesQuery, [data], (err) => {
                 if (err) console.log("Error updating resource:", err);
               });
             });
+                        //Delete existing project allocations
+            sql.query(`DELETE FROM ${employeeProjectAllocationsTable} WHERE work_request_id = ?`, [id], (err) => {
+              if (err) console.log("Error deleting existing project allocations:", err);
+            });
+
+            //Insert new project allocations
+            const projectAllocationsData = resourceIds.map(empId => ({
+              work_request_id: id,
+              employee_id: empId,
+              project_id: req.body.project_id,
+              start_date: req.body.duration_from,
+              end_date: req.body.duration_to,
+              hours_per_day: (parseFloat(req.body.hours_per_week) || 0) / 5,
+            }));
+            
+            const projectAllocationsQuery = `INSERT INTO ${employeeProjectAllocationsTable} SET ?`;
+            projectAllocationsData.forEach(data => {
+              sql.query(projectAllocationsQuery, [data], (err) => {
+                if (err) console.log("Error updating project allocation:", err);
+              });
+            });
+
           });
         }
         
